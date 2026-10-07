@@ -1,0 +1,1 @@
+read_verilog src_verilog/hdl/bram_synapse.v src_verilog/hdl/lif_neuron.v src_verilog/hdl/top_snn_system.v src_verilog/hdl/uart_transceiver.v; synth_gowin -top top_snn_system -json build/synth.json
