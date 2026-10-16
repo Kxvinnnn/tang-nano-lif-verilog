@@ -57,6 +57,7 @@ module top_lif_demo #(
         .DEBOUNCE_TIME_MS(DEBOUNCE_TIME_MS)
     ) u_debouncer_s1 (
         .clk(clk),
+        .rst_n(rst_n),
         .btn_async_in(btn1),
         .btn_clean_out(btn1_clean)
     );
@@ -66,6 +67,7 @@ module top_lif_demo #(
         .DEBOUNCE_TIME_MS(DEBOUNCE_TIME_MS)
     ) u_debouncer_s2 (
         .clk(clk),
+        .rst_n(rst_n),
         .btn_async_in(btn2),
         .btn_clean_out(btn2_clean)
     );
@@ -105,6 +107,7 @@ module top_lif_demo #(
         .HEX_FILE(HEX_FILE)
     ) u_bram (
         .clk(clk),
+        .rst_n(rst_n),
         .we(1'b0),
         .addr(bram_addr),
         .din(16'd0),

@@ -141,6 +141,40 @@ module tb_top_system;
         $display("[OK] Bus de telemetria UART activo. Transmisor serial comunicando a 115200 bps.");
 
         // ---------------------------------------------------------------------
+        // AUDITORÍA FINAL DE INTEGRIDAD DE BUSES (Pre-Finish Cleanliness Check)
+        // ---------------------------------------------------------------------
+        $display("\n[AUDITORIA PRE-FINISH] Verificando que interfaces UART, BRAM y LIF no tengan 'X' o 'Z'...");
+        
+        // Espera de 1 flanco de reloj para estabilizar cualquier transición residual
+        @(posedge clk);
+        #100;
+
+        if ($isunknown(uut.v_mem)) begin
+            $display("[ERROR PRE-FINISH] Bus v_mem contiene 'X'/'Z': %b", uut.v_mem);
+            errors = errors + 1;
+        end
+        if ($isunknown(uut.i_syn)) begin
+            $display("[ERROR PRE-FINISH] Bus i_syn contiene 'X'/'Z': %b", uut.i_syn);
+            errors = errors + 1;
+        end
+        if ($isunknown(uut.bram_addr)) begin
+            $display("[ERROR PRE-FINISH] Bus bram_addr contiene 'X'/'Z': %b", uut.bram_addr);
+            errors = errors + 1;
+        end
+        if ($isunknown(uut.weight_dout)) begin
+            $display("[ERROR PRE-FINISH] Bus weight_dout de BRAM contiene 'X'/'Z': %b", uut.weight_dout);
+            errors = errors + 1;
+        end
+        if ($isunknown(uart_tx)) begin
+            $display("[ERROR PRE-FINISH] Linea uart_tx en estado flotante 'X'/'Z': %b", uart_tx);
+            errors = errors + 1;
+        end
+        if ($isunknown(led)) begin
+            $display("[ERROR PRE-FINISH] Bus de actuadores LED contiene 'X'/'Z': %b", led);
+            errors = errors + 1;
+        end
+
+        // ---------------------------------------------------------------------
         // Balance Final de Verificación
         // ---------------------------------------------------------------------
         $display("\n=================================================================");
@@ -152,6 +186,7 @@ module tb_top_system;
         end
         $display("=================================================================\n");
 
+        #1000;
         $finish;
     end
 

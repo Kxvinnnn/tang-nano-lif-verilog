@@ -21,6 +21,11 @@ module lif_neuron #(
     reg signed [15:0] v_next;
 
     always @(*) begin
+        // Valores por defecto explícitos para inmunidad contra inferencia de latches
+        leak   = 16'sd0;
+        v_sum  = 18'sd0;
+        v_next = 16'sd0;
+
         // Fuga natural hacia el potencial de reposo (0):
         // Para v_mem > 0: leak positivo hace decrecer v_mem hacia 0.
         // Para v_mem < 0 (hiperpolarización): leak negativo hace crecer v_mem hacia 0.
