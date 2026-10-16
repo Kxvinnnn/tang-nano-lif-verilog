@@ -31,6 +31,20 @@ module tb_top_system;
 
     integer errors = 0;
 
+    // Monitor continuo de Tolerancia Cero a 'X' (X-Pessimism Trap)
+    always @(posedge clk) begin
+        if (uut.rst_n) begin
+            if ($isunknown(uut.bram_addr)) begin
+                $display("[FATAL X-DETECTED] Bus bram_addr contiene bits 'X'/'Z': %b a tiempo %0t ps", uut.bram_addr, $time);
+                $fatal(1);
+            end
+            if ($isunknown(uut.i_syn) && (uut.btn1_clean || uut.btn2_clean)) begin
+                $display("[FATAL X-DETECTED] Bus i_syn contiene bits 'X'/'Z': %b a tiempo %0t ps durante pulsacion", uut.i_syn, $time);
+                $fatal(1);
+            end
+        end
+    end
+
     initial begin
         $dumpfile("build/tb_top_system.vcd");
         $dumpvars(0, tb_top_system);
@@ -46,7 +60,7 @@ module tb_top_system;
         // Espera de arranque y estabilización del sincronizador de reset (AASD)
         #500000; // 500 us
         if (!uut.rst_n) begin
-            $display("[ERROR] Sincronizador de reset rst_n no se libero correctamente.");
+            $display("[TB-ERROR] Sincronizador de reset rst_n no se libero correctamente.");
             errors = errors + 1;
         end else begin
             $display("[OK] Reset sincronizado y liberado sin violacion de Recovery.");
@@ -65,7 +79,7 @@ module tb_top_system;
         #200000; // Espera en reposo
 
         if (uut.btn1_clean !== 1'b0) begin
-            $display("[ERROR] El debouncer permitio el paso de ruido mecanico en S1.");
+            $display("[TB-ERROR] El debouncer permitio el paso de ruido mecanico en S1.");
             errors = errors + 1;
         end else begin
             $display("[OK] Ruido mecanico transitorio (< 1 ms) filtrado al 100%% por el debouncer.");
@@ -79,7 +93,7 @@ module tb_top_system;
         #1500000; // 1.5 ms sostenido (supera umbral de 1 ms)
 
         if (uut.btn1_clean !== 1'b1) begin
-            $display("[ERROR] El debouncer no reconocio la pulsacion sostenida de S1.");
+            $display("[TB-ERROR] El debouncer no reconocio la pulsacion sostenida de S1.");
             errors = errors + 1;
         end else begin
             $display("[OK] Debouncer filtro y reconocio la pulsacion sostenida de S1.");
@@ -88,7 +102,7 @@ module tb_top_system;
         // Validar que la BRAM entregue el peso excitatorio (+68)
         #100000;
         if (uut.i_syn !== 16'sd68) begin
-            $display("[ERROR] Desconexion BRAM -> LIF. i_syn esperado: +68, obtenido: %d", uut.i_syn);
+            $display("[TB-ERROR] Desconexion BRAM -> LIF. i_syn esperado: +68, obtenido: %d", uut.i_syn);
             errors = errors + 1;
         end else begin
             $display("[OK] Conector BRAM -> LIF validado. Peso sinaptico excitatorio leido: +68.");
@@ -98,7 +112,7 @@ module tb_top_system;
         btn1 = 1'b1;
         #1500000; // 1.5 ms para que debouncer detecte la liberación
         if (uut.btn1_clean !== 1'b0) begin
-            $display("[ERROR] El debouncer no desaserto tras la liberacion de S1.");
+            $display("[TB-ERROR] El debouncer no desaserto tras la liberacion de S1.");
             errors = errors + 1;
         end else begin
             $display("[OK] Liberacion de S1 registrada correctamente.");
@@ -112,12 +126,12 @@ module tb_top_system;
         #1500000; // 1.5 ms sostenido
 
         if (uut.btn2_clean !== 1'b1) begin
-            $display("[ERROR] El debouncer no reconocio la pulsacion sostenida de S2.");
+            $display("[TB-ERROR] El debouncer no reconocio la pulsacion sostenida de S2.");
             errors = errors + 1;
         end
 
         if (uut.i_syn !== -16'sd65) begin
-            $display("[ERROR] Desconexion BRAM -> LIF. i_syn esperado: -65, obtenido: %d", uut.i_syn);
+            $display("[TB-ERROR] Desconexion BRAM -> LIF. i_syn esperado: -65, obtenido: %d", uut.i_syn);
             errors = errors + 1;
         end else begin
             $display("[OK] Conector BRAM -> LIF validado. Peso inhibitorio leido: -65.");
@@ -150,27 +164,27 @@ module tb_top_system;
         #100;
 
         if ($isunknown(uut.v_mem)) begin
-            $display("[ERROR PRE-FINISH] Bus v_mem contiene 'X'/'Z': %b", uut.v_mem);
+            $display("[TB-ERROR PRE-FINISH] Bus v_mem contiene 'X'/'Z': %b", uut.v_mem);
             errors = errors + 1;
         end
         if ($isunknown(uut.i_syn)) begin
-            $display("[ERROR PRE-FINISH] Bus i_syn contiene 'X'/'Z': %b", uut.i_syn);
+            $display("[TB-ERROR PRE-FINISH] Bus i_syn contiene 'X'/'Z': %b", uut.i_syn);
             errors = errors + 1;
         end
         if ($isunknown(uut.bram_addr)) begin
-            $display("[ERROR PRE-FINISH] Bus bram_addr contiene 'X'/'Z': %b", uut.bram_addr);
+            $display("[TB-ERROR PRE-FINISH] Bus bram_addr contiene 'X'/'Z': %b", uut.bram_addr);
             errors = errors + 1;
         end
         if ($isunknown(uut.weight_dout)) begin
-            $display("[ERROR PRE-FINISH] Bus weight_dout de BRAM contiene 'X'/'Z': %b", uut.weight_dout);
+            $display("[TB-ERROR PRE-FINISH] Bus weight_dout de BRAM contiene 'X'/'Z': %b", uut.weight_dout);
             errors = errors + 1;
         end
         if ($isunknown(uart_tx)) begin
-            $display("[ERROR PRE-FINISH] Linea uart_tx en estado flotante 'X'/'Z': %b", uart_tx);
+            $display("[TB-ERROR PRE-FINISH] Linea uart_tx en estado flotante 'X'/'Z': %b", uart_tx);
             errors = errors + 1;
         end
         if ($isunknown(led)) begin
-            $display("[ERROR PRE-FINISH] Bus de actuadores LED contiene 'X'/'Z': %b", led);
+            $display("[TB-ERROR PRE-FINISH] Bus de actuadores LED contiene 'X'/'Z': %b", led);
             errors = errors + 1;
         end
 
@@ -179,9 +193,9 @@ module tb_top_system;
         // ---------------------------------------------------------------------
         $display("\n=================================================================");
         if (errors == 0) begin
-            $display("TESTBENCH PASSED: Integracion Top-Level, Antirrebote, BRAM, LIF y UART validados sin errores.");
+            $display("TESTBENCH PASSED: Integracion Top-Level, Antirrebote, BRAM, LIF y UART validados con 0 fallos.");
         end else begin
-            $display("TESTBENCH FAILED: Se detectaron %0d errores en la integracion top-level.", errors);
+            $display("TESTBENCH FAILED: Se detectaron %0d fallos en la integracion top-level.", errors);
             $fatal(1);
         end
         $display("=================================================================\n");

@@ -32,8 +32,8 @@ jobs:
       - name: Execute Unit Simulation & Validate Assertions
         run: |
           vvp build/sim_tb_lif_neuron.vvp | tee simulation_unit.log
-          if grep -E -i "(TESTBENCH FAILED|FATAL|ERROR|X-DETECTED)" simulation_unit.log; then
-            echo "[ERROR] Fallo o señal indeterminada en simulación unitaria RTL."
+          if grep -E -i "(TESTBENCH FAILED|FATAL|\[TB-ERROR\]|X-DETECTED)" simulation_unit.log; then
+            echo "[ERROR] Fallo crítico detectado en la simulación unitaria RTL."
             exit 1
           fi
           if ! grep -q "TESTBENCH PASSED" simulation_unit.log; then
@@ -53,7 +53,7 @@ jobs:
             src_verilog/top_lif_demo.v \
             src_verilog/tb/tb_top_system.v
           vvp build/sim_tb_top_system.vvp | tee simulation_top.log
-          if grep -E -i "(TESTBENCH FAILED|FATAL|ERROR|X-DETECTED|obtenido:\s+[xz])" simulation_top.log; then
+          if grep -E -i "(TESTBENCH FAILED|FATAL|\[TB-ERROR\]|X-DETECTED|obtenido:\s+[xz])" simulation_top.log; then
             echo "[ERROR] Fallo de aserción o valor 'X'/'Z' detectado en top_system."
             exit 1
           fi
