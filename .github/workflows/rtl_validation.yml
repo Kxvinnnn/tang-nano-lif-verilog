@@ -24,7 +24,7 @@ jobs:
       - name: Compile Unit RTL Core and Testbench (tb_lif_neuron)
         run: |
           mkdir -p build
-          iverilog -g2012 -s tb_lif_neuron \
+          iverilog -Wall -Wno-timescale -g2012 -s tb_lif_neuron \
             -o build/sim_tb_lif_neuron.vvp \
             src_verilog/hdl/lif_neuron.v \
             src_verilog/tb/tb_lif_neuron.v
@@ -32,8 +32,8 @@ jobs:
       - name: Execute Unit Simulation & Validate Assertions
         run: |
           vvp build/sim_tb_lif_neuron.vvp | tee simulation_unit.log
-          if grep -q "TESTBENCH FAILED" simulation_unit.log; then
-            echo "[ERROR] Fallo de aserción detectado en la simulación unitaria RTL."
+          if grep -E -i "(TESTBENCH FAILED|FATAL|ERROR|X-DETECTED)" simulation_unit.log; then
+            echo "[ERROR] Fallo o señal indeterminada en simulación unitaria RTL."
             exit 1
           fi
           if ! grep -q "TESTBENCH PASSED" simulation_unit.log; then
@@ -44,7 +44,7 @@ jobs:
 
       - name: Compile and Simulate Top-Level Integration (tb_top_system)
         run: |
-          iverilog -g2012 -s tb_top_system \
+          iverilog -Wall -Wno-timescale -g2012 -s tb_top_system \
             -o build/sim_tb_top_system.vvp \
             src_verilog/hdl/button_debouncer.v \
             src_verilog/bram_synapse_matrix.v \
@@ -53,8 +53,8 @@ jobs:
             src_verilog/top_lif_demo.v \
             src_verilog/tb/tb_top_system.v
           vvp build/sim_tb_top_system.vvp | tee simulation_top.log
-          if grep -q "TESTBENCH FAILED" simulation_top.log; then
-            echo "[ERROR] Fallo de aserción en el testbench de integración top_system."
+          if grep -E -i "(TESTBENCH FAILED|FATAL|ERROR|X-DETECTED|obtenido:\s+[xz])" simulation_top.log; then
+            echo "[ERROR] Fallo de aserción o valor 'X'/'Z' detectado en top_system."
             exit 1
           fi
           if ! grep -q "TESTBENCH PASSED" simulation_top.log; then

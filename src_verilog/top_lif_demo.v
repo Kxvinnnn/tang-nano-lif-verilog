@@ -17,11 +17,11 @@ module top_lif_demo #(
     // =========================================================================
     // Reset Synchronizer (2-FF AASD) que desaserta el reset síncronamente con clk
     // garantizando que los Flip-Flops no sufran violaciones de recuperación/remoción.
-    reg [1:0] rst_sync;
+    reg [3:0] rst_sync = 4'd0;
     always @(posedge clk) begin
-        rst_sync <= {rst_sync[0], 1'b1};
+        rst_sync <= {rst_sync[2:0], 1'b1};
     end
-    wire rst_n = rst_sync[1];
+    wire rst_n = rst_sync[3];
 
     // =========================================================================
     // 1. GENERADOR DE RELOJ BIOLÓGICO (Prescaler / bio_tick de 50 Hz = 20 ms)
@@ -78,7 +78,7 @@ module top_lif_demo #(
     // 3. INTEGRACIÓN REAL DE LA MATRIZ SINÁPTICA BRAM
     // Modula dinámicamente el direccionamiento según el estímulo y la ráfaga
     // =========================================================================
-    reg [1:0] syn_pattern_idx;
+    reg [1:0] syn_pattern_idx = 2'd0;
     wire spike;
 
     always @(posedge clk or negedge rst_n) begin
