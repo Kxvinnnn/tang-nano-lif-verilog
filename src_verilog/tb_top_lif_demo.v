@@ -6,7 +6,10 @@ module tb_top_lif_demo;
     wire uart_tx;
     wire [5:0] led;
 
-    top_lif_demo uut (
+    top_lif_demo #(
+        .CLK_FREQ(27_000_000),
+        .DEBOUNCE_TIME_MS(1)
+    ) uut (
         .clk(clk),
         .btn1(btn1),
         .btn2(btn2),

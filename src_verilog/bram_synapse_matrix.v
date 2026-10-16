@@ -11,7 +11,7 @@ module bram_synapse_matrix #(
     input  wire [DATA_WIDTH-1:0]   din,
     output reg  [DATA_WIDTH-1:0]   dout
 );
-    (* ram_style = "block" *) reg [DATA_WIDTH-1:0] ram [0:MEM_SIZE-1];
+    (* ram_style = "block" *) reg signed [DATA_WIDTH-1:0] ram [0:MEM_SIZE-1];
 
     initial begin
         $readmemh(HEX_FILE, ram);

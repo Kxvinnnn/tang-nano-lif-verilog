@@ -1,3 +1,0 @@
-// Bitstream industrial Tang Nano 9K - SNN Top Lif Demo
-@BITSTREAM
-11010010101101011010010101101011

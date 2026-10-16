@@ -1,0 +1,74 @@
+name: RTL Formal Validation & CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  rtl-simulation:
+    name: Icarus Verilog Unit & Integration Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog & VVP Toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y iverilog
+
+      - name: Compile Unit RTL Core and Testbench (tb_lif_neuron)
+        run: |
+          mkdir -p build
+          iverilog -g2012 -s tb_lif_neuron \
+            -o build/sim_tb_lif_neuron.vvp \
+            src_verilog/hdl/lif_neuron.v \
+            src_verilog/tb/tb_lif_neuron.v
+
+      - name: Execute Unit Simulation & Validate Assertions
+        run: |
+          vvp build/sim_tb_lif_neuron.vvp | tee simulation_unit.log
+          if grep -q "TESTBENCH FAILED" simulation_unit.log; then
+            echo "[ERROR] Fallo de aserción detectado en la simulación unitaria RTL."
+            exit 1
+          fi
+          if ! grep -q "TESTBENCH PASSED" simulation_unit.log; then
+            echo "[ERROR] La simulación unitaria no concluyó con estado PASSED."
+            exit 1
+          fi
+          echo "[SUCCESS] Verificación funcional de la neurona LIF superada con 0 errores."
+
+      - name: Compile and Simulate Top-Level Integration (tb_top_system)
+        run: |
+          iverilog -g2012 -s tb_top_system \
+            -o build/sim_tb_top_system.vvp \
+            src_verilog/hdl/button_debouncer.v \
+            src_verilog/bram_synapse_matrix.v \
+            src_verilog/hdl/lif_neuron.v \
+            src_verilog/hdl/uart_transceiver.v \
+            src_verilog/top_lif_demo.v \
+            src_verilog/tb/tb_top_system.v
+          vvp build/sim_tb_top_system.vvp | tee simulation_top.log
+          if grep -q "TESTBENCH FAILED" simulation_top.log; then
+            echo "[ERROR] Fallo de aserción en el testbench de integración top_system."
+            exit 1
+          fi
+          if ! grep -q "TESTBENCH PASSED" simulation_top.log; then
+            echo "[ERROR] La simulación de integración no concluyó con estado PASSED."
+            exit 1
+          fi
+          echo "[SUCCESS] Verificación de integración del sistema completo superada con 0 errores."
+
+      - name: Archive VCD Waveforms
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulation-waveforms
+          path: |
+            tb_lif_neuron.vcd
+            build/*.vcd
+          retention-days: 7

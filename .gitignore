@@ -1,0 +1,50 @@
+# Entornos Virtuales y Dependencias
+.venv/
+env/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Gowin EDA Build Artifacts & Binaries
+impl/
+build/
+*.fs
+*.vcd
+*.vvp
+*.json
+*.vg
+*.power.html
+*.pin.html
+*.rpt
+*.log
+
+# Binarios y Herramientas Locales
+tools/
+*.exe
+
+# Telemetría Dinámica y Datasets Pesados
+telemetry_data/*.csv
+!telemetry_data/.gitkeep
+
+# Secretos y Configuración Local
+.env
+.env.*
+*.secret
+*.key
+*.pem
+*.token
+
+# IDEs y Editores
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Artefactos del Sistema Operativo
+.DS_Store
+Thumbs.db
+media/
