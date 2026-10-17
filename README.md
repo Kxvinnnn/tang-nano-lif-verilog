@@ -32,13 +32,18 @@ The core compute engine does not run sequential software instructions. It is gov
 ![RTL Hardware Architecture Blueprint](docs/rtl_hardware_blueprint.png)
 
 ### Native Gowin EDA RTL Design Viewer & Physical FloorPlanner
-````carousel
+
+#### 1. RTL Design Viewer (Post-Synthesis Netlist Primitives)
 ![Gowin EDA RTL Design Viewer](docs/gowin_rtl_viewer.png)
-<!-- slide -->
+**Figure 2A:** Native Gowin EDA RTL Design Viewer displaying hardware primitives: Adders (`ADD`), Registers (`DFF`), Multiplexers (`MUX`), and Embedded Block RAM (`BSRAM`).
+
+#### 2. Physical FloorPlanner (GW1NR-9C Silicon Die Placement)
 ![Gowin EDA Physical FloorPlanner](docs/gowin_floorplanner.png)
-<!-- slide -->
+**Figure 2B:** Native Gowin EDA Physical FloorPlanner showing cell routing and logic cluster placement across the 8,640 available LUT4 cells (9.6% occupancy).
+
+#### 3. Silicon Footprint & Hardware Utilization Metrics
 ![GW1NR-9C Silicon Footprint & Resource Utilization](docs/fpga_floorplan_metrics.png)
-````
+**Figure 2C:** Physical silicon utilization breakdown on Gowin GW1NR-9C: 833 LUT4 cells, 207 flip-flops, 1 BSRAM block, 0 DSP blocks, and +27.42 ns setup timing margin.
 
 ```mermaid
 graph TD
