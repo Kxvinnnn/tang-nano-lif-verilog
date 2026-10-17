@@ -91,6 +91,29 @@ $$V[k+1] = V[k] - (V[k] \ggg 4) + I_{syn}[k]$$
 
 ---
 
+## 🏠 End-to-End ML Benchmark: Housing Price Prediction via Rate Coding
+
+To demonstrate practical Machine Learning inference on neuromorphic silicon, a classic **Housing Price Regression** model (California Housing distribution) is mapped onto the FPGA's 16-bit Leaky Integrate-and-Fire datapath via temporal **Rate Coding** ([`src_py/housing_ml_to_fpga.py`](src_py/housing_ml_to_fpga.py)).
+
+![Housing ML Rate Coding Benchmark](docs/housing_ml_rate_coding.png)
+**Figure 3:** End-to-end Machine Learning to FPGA silicon pipeline. **(Panel 1)** Classical floating-point regression weights quantized into 16-bit signed Block RAM coefficients matching `data/synaptic_weights.hex`. **(Panel 2)** Bit-exact 16-bit hardware membrane potential $V_{mem}(t)$ and spike raster comparing three real-world housing tiers over 200 biological ticks (4.0 s). **(Panel 3)** Population regression curve demonstrating a near-perfect neuromorphic rate-coding correlation ($R^2 = 0.9922$) between physical spike firing frequency and predicted property price.
+
+### Neuromorphic Rate-Coding Quantization & Hardware Inference
+
+1. **BSRAM In-Memory Weight Storage:** The 8 learned property valuation weights are quantized into signed 16-bit integers matching the `[-66, +70]` dynamic range of `data/synaptic_weights.hex`. Excitatory features (Median Income, Average Rooms, Ocean Proximity, School Quality) generate positive synaptic currents ($+68$ to $+70$), while inhibitory factors (Crime Rate, Property Age, Local Tax Burden, Distance) generate negative counter-currents ($-65$ to $-66$).
+2. **Rate Coding Paradigm:** Rather than computing continuous matrix multiplications in high-power floating-point units (Von Neumann architecture), the FPGA translates the scalar property valuation into an event-driven **temporal spike train frequency**:
+
+| Housing Tier | Evaluated Features Summary | Synaptic Current $I_{syn}$ | Steady-State Asymptote ($V_{\infty}$) | Spike Firing Rate ($f_{spike}$) | Predicted Price Valuation |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Low-Tier Budget House** | Low income ($0.2$), High crime ($0.8$), Small area | **$+45_{hw}$** | $+720_{hw}$ ($< V_{TH}$) | **$0.00\text{ Hz}$ (Quiescent)** | **\$145,000 USD** |
+| **Mid-Tier Family House** | Balanced income ($0.5$), Average rooms, Median suburb | **$+68_{hw}$** | $+1,088_{hw}$ ($> V_{TH}$) | **$1.00\text{ Hz}$ (Periodic)** | **\$425,000 USD** |
+| **Luxury High-End Estate** | Top income ($0.95$), Coastal proximity ($0.95$), Low crime | **$+105_{hw}$** | $+1,680_{hw}$ ($\gg V_{TH}$) | **$1.75\text{ Hz}$ (Burst)** | **\$985,000 USD** |
+
+* **Zero Quiescent Power Consumption:** Subthreshold inputs (budget properties with $I_{syn} < 62.5$) asymptote below $V_{TH} = 1000_{hw}$ and produce zero spikes ($0.00\text{ Hz}$), demonstrating event-driven energy conservation.
+* **Deterministic Silicon Linearity:** Suprathreshold valuations integrate exponentially according to $V[k+1] = V[k] - (V[k] \ggg 4) + I_{syn}$, producing higher firing rates for higher property values ($R^2 = 0.9922$).
+
+---
+
 ## 📡 UART Telemetry Protocol (9-Byte Binary Packet @ 115200 bps)
 
 To maintain absolute observability of internal neuronal variables without introducing parasitic latency into the compute pipeline (Observer Effect), the FPGA continuously streams a 9-byte structured binary packet upon each `bio_tick` pulse (50 Hz):
@@ -215,6 +238,7 @@ python telemetry/telemetry_listener.py --port COM4 --baud 115200 --log-csv telem
 │       └── tb_top_system.v         # System integration testbench with mechanical contact bounce
 │
 ├── src_py/                         # [Golden Mathematical Models & Validation Tools]
+│   ├── housing_ml_to_fpga.py       # End-to-end Housing Price ML benchmark & rate-coding emulator
 │   ├── lif_math_model.py           # Bit-exact analytical golden model (Point-to-point validation)
 │   ├── lif_equivalence.py          # Cycle-by-cycle 16-bit fixed-point emulator (1000 steps)
 │   ├── train_and_export.py         # Synaptic weight generator and hex quantizer
@@ -238,6 +262,7 @@ python telemetry/telemetry_listener.py --port COM4 --baud 115200 --log-csv telem
     ├── gowin_rtl_viewer.png        # Native Gowin EDA RTL Design Viewer schematic capture
     ├── gowin_floorplanner.png      # Native Gowin EDA Physical FloorPlanner silicon die capture
     ├── fpga_floorplan_metrics.png  # Silicon floorplan and hardware utilization visual card
+    ├── housing_ml_rate_coding.png  # 3-panel ML rate-coding benchmark (Weights, V_mem, F-I curve)
     ├── TECHNICAL_PAPER.md          # Comprehensive IEEE/NeurIPS scientific research manuscript
     ├── TECHNICAL_REPORT.md         # Full research report and AER scalability roadmap (Tier 2)
     ├── SPEAKER_GUIDE.md            # Speaker defense script and operational instructions (Tier 3)
