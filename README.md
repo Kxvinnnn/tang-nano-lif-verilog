@@ -192,7 +192,6 @@ python telemetry/telemetry_listener.py --port COM4 --baud 115200 --log-csv telem
 │
 ├── data/                           # Quantized static synaptic coefficients
 │   ├── synaptic_weights.hex        # Quantized synaptic weights for BRAM matrix (+68 / -65)
-│   ├── pesos_sinapticos.hex        # Backward-compatible mirrored coefficient file
 │   └── weights.hex                 # Complementary pre-trained weight table
 │
 ├── src_verilog/                    # [Silicon RTL Architecture and Verification Testbenches]
@@ -225,7 +224,7 @@ python telemetry/telemetry_listener.py --port COM4 --baud 115200 --log-csv telem
 ├── tests/                          # [Cocotb Digital Verification Suite]
 │   └── test_lif_network.py         # Constrained Random Verification (CRV) & Scoreboard
 │
-├── presentacion_final/             # [Interactive Web Presentation]
+├── web_dashboard/                  # [Interactive Web Presentation Dashboard]
 │   └── index.html                  # Responsive HTML dashboard summarizing silicon metrics
 │
 └── docs/                           # [Research Publications, Benchmarks & Architectural Diagrams]
@@ -238,9 +237,7 @@ python telemetry/telemetry_listener.py --port COM4 --baud 115200 --log-csv telem
     ├── TECHNICAL_REPORT.md         # Full research report and AER scalability roadmap (Tier 2)
     ├── SPEAKER_GUIDE.md            # Speaker defense script and operational instructions (Tier 3)
     ├── DATASHEET.md                # Complete engineering hardware datasheet and pinout specs
-    ├── FICHA_TECNICA.md            # Complete engineering hardware datasheet (mirrored)
     ├── DEMO_SCRIPT.md              # Minute-by-minute live exhibition procedure
-    ├── GUION_DEMO.md               # Minute-by-minute live exhibition procedure (mirrored)
     ├── GROUND_TRUTH_AUDIT.md       # Forensic silicon ground truth audit report
     ├── lif_validation_curve.png    # 3-panel temporal correlation curve (Golden vs RTL)
     ├── lif_equivalence_plot.png    # Scientific 3-panel validation plot (1000 steps / 20 s)

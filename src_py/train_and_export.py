@@ -47,7 +47,6 @@ def generate_synaptic_weights():
 
     os.makedirs("data", exist_ok=True)
     hex_output_primary = os.path.join("data", "synaptic_weights.hex")
-    hex_output_legacy = os.path.join("data", "pesos_sinapticos.hex")
 
     hex_lines = []
     print("=" * 72)
@@ -65,14 +64,12 @@ def generate_synaptic_weights():
         w_type = "EXCITATORY" if v_bio > 0 else "INHIBITORY"
         print(f"0x{addr:02X}   | {w_type:<12} | {v_bio:+6.2f} mV      | {w_hw:+6d}     | {hex_val}")
 
-    for out_path in (hex_output_primary, hex_output_legacy):
-        with open(out_path, "w", encoding="utf-8") as f:
-            for line in hex_lines:
-                f.write(line + "\n")
+    with open(hex_output_primary, "w", encoding="utf-8") as f:
+        for line in hex_lines:
+            f.write(line + "\n")
 
     print("-" * 72)
     print(f"[OK] Primary HEX file generated: {hex_output_primary}")
-    print(f"[OK] Legacy HEX file mirrored:   {hex_output_legacy}")
     print(f"[OK] Total 16-bit synaptic words exported: {len(hex_lines)}")
     print("=" * 72)
 
