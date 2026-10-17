@@ -47,10 +47,10 @@ jobs:
           iverilog -Wall -Wno-timescale -g2012 -s tb_top_system \
             -o build/sim_tb_top_system.vvp \
             src_verilog/hdl/button_debouncer.v \
-            src_verilog/bram_synapse_matrix.v \
+            src_verilog/hdl/bram_synapse_matrix.v \
             src_verilog/hdl/lif_neuron.v \
             src_verilog/hdl/uart_transceiver.v \
-            src_verilog/top_lif_demo.v \
+            src_verilog/hdl/top_lif_demo.v \
             src_verilog/tb/tb_top_system.v
           vvp build/sim_tb_top_system.vvp | tee simulation_top.log
           if grep -E -i "(TESTBENCH FAILED|FATAL|\[TB-ERROR\]|X-DETECTED|obtenido:\s+[xz])" simulation_top.log; then

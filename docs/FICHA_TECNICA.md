@@ -199,7 +199,7 @@ Verifica la cohesión estructural de la ruta de datos completa y el rechazo de r
 - Conexión BRAM a ALU LIF verificando la lectura de pesos `+68` (excitatorio) y `-65` (inhibitorio).
 - Disparo neuronal, temporizador de ráfaga estroboscópica y emisión de la trama serial de 9 bytes a 115200 bps por `uart_tx`.
 ```cmd
-iverilog -g2012 -s tb_top_system -o build\sim_tb_top_system.vvp src_verilog\hdl\button_debouncer.v src_verilog\bram_synapse_matrix.v src_verilog\hdl\lif_neuron.v src_verilog\hdl\uart_transceiver.v src_verilog\top_lif_demo.v src_verilog\tb\tb_top_system.v
+iverilog -g2012 -s tb_top_system -o build\sim_tb_top_system.vvp src_verilog\hdl\button_debouncer.v src_verilog\hdl\bram_synapse_matrix.v src_verilog\hdl\lif_neuron.v src_verilog\hdl\uart_transceiver.v src_verilog\hdl\top_lif_demo.v src_verilog\tb\tb_top_system.v
 vvp build\sim_tb_top_system.vvp
 ```
 *Salida:* `TESTBENCH PASSED: Integracion Top-Level, Antirrebote, BRAM, LIF y UART validados sin errores.`
@@ -221,16 +221,16 @@ Con la Tang Nano 9K conectada al puerto COM4:
 
 ```cmd
 # Modo osciloscopio en consola ASCII interactiva (con guardado opcional de telemetría a CSV):
-.venv\Scripts\python.exe telemetry_listener.py --port COM4 --console --log-csv fpga_telemetry.csv
+.venv\Scripts\python.exe telemetry/telemetry_listener.py --port COM4 --console --log-csv fpga_telemetry.csv
 
 # Modo gráfico dinámico en tiempo real (Matplotlib):
-.venv\Scripts\python.exe telemetry_listener.py --port COM4 --log-csv fpga_telemetry.csv
+.venv\Scripts\python.exe telemetry/telemetry_listener.py --port COM4 --log-csv fpga_telemetry.csv
 ```
 Permite observar en tiempo real la subida del potencial al presionar S1, la hiperpolarización al presionar S2, el parpadeo de spikes y la curva asintótica de fuga al soltar los pulsadores.
 
 ---
 
-### 5.4. Modelo de Equivalencia Hardware en Punto Fijo 16-bit (`lif_equivalence.py`)
+### 5.4. Modelo de Equivalencia Hardware en Punto Fijo 16-bit (`src_py/lif_equivalence.py`)
 Diseñado para emular ciclo a ciclo el hardware digital en punto fijo de 16 bits (`int16`) a 50 Hz durante 1,000 pasos de tiempo ($20.0\text{ segundos}$ continuos de emulación bioeléctrica):
 
 $$\text{Ecuación: } V(t+1) = V(t) - (V(t) \gg 4) + I_{syn}$$
@@ -238,10 +238,10 @@ $$\text{Disparo: Si } V(t) > 1000 \implies \text{Spike} = 1,\; V(t) = -250,\; \t
 
 ```cmd
 # 1. Ejecutar emulación completa de 1000 pasos, exportar CSV y generar gráfico:
-.venv\Scripts\python.exe lif_equivalence.py --steps 1000 --csv lif_equivalence_data.csv --plot docs/lif_equivalence_plot.png
+.venv\Scripts\python.exe src_py/lif_equivalence.py --steps 1000 --csv docs/lif_equivalence_data.csv --plot docs/lif_equivalence_plot.png
 
 # 2. Correlación directa y cálculo de error (RMSE y R Pearson) contra telemetría FPGA:
-.venv\Scripts\python.exe lif_equivalence.py --compare fpga_telemetry.csv
+.venv\Scripts\python.exe src_py/lif_equivalence.py --compare fpga_telemetry.csv
 ```
 - **Exportación CSV:** Genera `lif_equivalence_data.csv` (`step,time_ms,time_s,i_syn,v_mem,spike,refractory`).
 - **Gráfica Científica:** Genera `docs/lif_equivalence_plot.png` con análisis temporal de potencial, corriente sináptica y raster de disparo.

@@ -1,8 +1,0 @@
-script = """read_verilog src_verilog/bram_synapse_matrix.v src_verilog/hdl/lif_neuron.v src_verilog/hdl/uart_transceiver.v src_verilog/debounce_sync.v src_verilog/top_lif_demo.v
-synth_gowin -noabc9 -top top_lif_demo -json top_lif_demo.json
-"""
-
-with open("synth_script.ys", "w", encoding="utf-8") as f:
-    f.write(script)
-
-print("Script de síntesis escrito.")

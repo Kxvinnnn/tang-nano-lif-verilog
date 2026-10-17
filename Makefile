@@ -1,4 +1,4 @@
-.PHONY: data sim sim-system synth-open prog-sram prog-flash clean
+.PHONY: data sim sim-system synth-gowin prog-sram prog-flash clean
 
 data:
 	python3 src_py/train_and_export.py
@@ -8,18 +8,17 @@ sim:
 	vvp build/sim_tb_lif_neuron.vvp
 
 sim-system:
-	iverilog -g2012 -s tb_top_system -o build/sim_tb_top_system.vvp src_verilog/hdl/button_debouncer.v src_verilog/bram_synapse_matrix.v src_verilog/hdl/lif_neuron.v src_verilog/hdl/uart_transceiver.v src_verilog/top_lif_demo.v src_verilog/tb/tb_top_system.v
+	iverilog -g2012 -s tb_top_system -o build/sim_tb_top_system.vvp src_verilog/hdl/button_debouncer.v src_verilog/hdl/bram_synapse_matrix.v src_verilog/hdl/lif_neuron.v src_verilog/hdl/uart_transceiver.v src_verilog/hdl/top_lif_demo.v src_verilog/tb/tb_top_system.v
 	vvp build/sim_tb_top_system.vvp
 
-synth-open:
-	echo "Iniciando síntesis abierta..."
-	python run_yosys.py
+synth-gowin:
+	gw_sh build.tcl
 
 prog-sram:
-	openFPGALoader -b tangnano9k top_lif_demo.fs
+	openFPGALoader -b tangnano9k impl/pnr/LIF_Hardware.fs
 
 prog-flash:
-	openFPGALoader -b tangnano9k -f top_lif_demo.fs
+	openFPGALoader -b tangnano9k -f impl/pnr/LIF_Hardware.fs
 
 clean:
 	rm -rf build/*
