@@ -1,22 +1,35 @@
 `timescale 1ns / 1ps
+// =============================================================================
+// top_lif_demo.v - Top-Level Neuromorphic LIF System Integration on Tang Nano 9K
+// Target FPGA: Gowin LittleBee GW1NR-LV9QN88PC6/I5 (GW1NR-9C)
+// Architecture Features:
+//   - Deterministic 4-stage AASD Power-On Reset Synchronizer
+//   - Biological prescaler generating 50 Hz bio_tick strobes (dt = 20 ms)
+//   - 2-FF metastability protection and 20 ms mechanical debounce filtering
+//   - Dedicated BSRAM synaptic weight matrix (+68 excitatory / -65 inhibitory)
+//   - 16-bit signed LIF biological ALU with [-250, +32767] hardware clamping
+//   - 13.18 kHz 8-bit PWM analog voltmeter for 5-level membrane potential display
+//   - 25 Hz visual strobe FSM for action potential spike events
+//   - High-speed 115200 bps UART telemetry streaming 9-byte packets with XOR parity
+// =============================================================================
 
 module top_lif_demo #(
     parameter CLK_FREQ         = 27_000_000,
     parameter DEBOUNCE_TIME_MS = 20,
-    parameter HEX_FILE         = "data/pesos_sinapticos.hex"
+    parameter HEX_FILE         = "data/synaptic_weights.hex"
 )(
-    input  wire        clk,          // Reloj base 27 MHz (Pin 52)
-    input  wire        btn1,         // S1 (Pin 3, activo en bajo)
-    input  wire        btn2,         // S2 (Pin 4, activo en bajo)
-    output wire        uart_tx,      // UART TX (Pin 17)
-    output wire [5:0]  led           // LEDs 0..5 (activos en bajo, Pines 10,11,13,14,15,16)
+    input  wire        clk,          // 27.0 MHz onboard crystal oscillator (Pin 52)
+    input  wire        btn1,         // Pushbutton S1 (Pin 3, active-low with pull-up)
+    input  wire        btn2,         // Pushbutton S2 (Pin 4, active-low with pull-up)
+    output wire        uart_tx,      // UART Serial TX to host bridge (Pin 17)
+    output wire [5:0]  led           // Onboard LEDs 0..5 (active-low, Pins 10,11,13,14,15,16)
 );
 
     // =========================================================================
-    // 0. RESET DETERMINISTA Y PREVENCIÓN DE RECOVERY / REMOVAL (ASIC Best Practice)
+    // 0. DETERMINISTIC POWER-ON RESET & RECOVERY/REMOVAL MITIGATION
     // =========================================================================
-    // Reset Synchronizer (2-FF AASD) que desaserta el reset síncronamente con clk
-    // garantizando que los Flip-Flops no sufran violaciones de recuperación/remoción.
+    // 4-stage Asynchronous Assert, Synchronous Deassert (AASD) synchronizer.
+    // Deasserts reset synchronously with posedge clk, preventing timing violations.
     reg [3:0] rst_sync = 4'd0;
     always @(posedge clk) begin
         rst_sync <= {rst_sync[2:0], 1'b1};
@@ -24,8 +37,8 @@ module top_lif_demo #(
     wire rst_n = rst_sync[3];
 
     // =========================================================================
-    // 1. GENERADOR DE RELOJ BIOLÓGICO (Prescaler / bio_tick de 50 Hz = 20 ms)
-    // 27,000,000 Hz / 50 Hz = 540,000 ciclos de reloj base
+    // 1. BIOLOGICAL CLOCK GENERATOR (Prescaler / bio_tick @ 50 Hz = 20 ms)
+    // 27,000,000 Hz / 50 Hz = 540,000 base clock cycles
     // =========================================================================
     localparam [19:0] CYCLES_50HZ = 20'd540000;
     reg [19:0] bio_cnt;
@@ -45,9 +58,9 @@ module top_lif_demo #(
     end
 
     // =========================================================================
-    // 2. ACONDICIONAMIENTO DE ENTRADA FÍSICA (2-FF Sync + Debouncer 20 ms)
-    // S1 y S2 son activos en bajo (0 = presionado, 1 = suelto con Pull-Up)
-    // Elimina rebotes mecánicos y metaestabilidad antes de excitar la red.
+    // 2. PHYSICAL INPUT CONDITIONING (2-FF Synchronizer + 20 ms Debouncer)
+    // Pushbuttons S1 and S2 are active-low (0 = pressed, 1 = released with pull-up).
+    // Rejects mechanical switch bouncing and eliminates asynchronous metastability.
     // =========================================================================
     wire btn1_clean;
     wire btn2_clean;
@@ -72,13 +85,13 @@ module top_lif_demo #(
         .btn_clean_out(btn2_clean)
     );
 
-    // Mapeo hacia la lógica de niveles: btn1_clean es 1 cuando S1 está presionado
+    // Map to active-low physical levels: btn1_clean is 1 when S1 is actively pressed
     wire btn_s1_level = ~btn1_clean;
     wire btn_s2_level = ~btn2_clean;
 
     // =========================================================================
-    // 3. INTEGRACIÓN REAL DE LA MATRIZ SINÁPTICA BRAM
-    // Modula dinámicamente el direccionamiento según el estímulo y la ráfaga
+    // 3. SYNAPTIC MEMORY INTEGRATION (Gowin Embedded BSRAM)
+    // Dynamically modulates addressing based on tactile stimulation and spike bursts
     // =========================================================================
     reg [1:0] syn_pattern_idx = 2'd0;
     wire spike;
@@ -87,13 +100,13 @@ module top_lif_demo #(
         if (!rst_n) begin
             syn_pattern_idx <= 2'd0;
         end else if (spike) begin
-            syn_pattern_idx <= syn_pattern_idx + 2'd1; // Avanza patrón en cada spike
+            syn_pattern_idx <= syn_pattern_idx + 2'd1; // Cycle through weight entries upon spike
         end
     end
 
-    // Mapeo de direcciones en BRAM (8 posiciones de 16 bits):
-    // - Direcciones pares (0, 2, 4, 6): Pesos excitatorios (+68, +68, +70, +68)
-    // - Direcciones impares (1, 3, 5, 7): Pesos inhibitorios (-65, -65, -66, -65)
+    // BSRAM Address Mapping (8 entries of 16-bit words):
+    // - Even addresses (0, 2, 4, 6): Excitatory weights (+68, +68, +70, +68)
+    // - Odd addresses  (1, 3, 5, 7): Inhibitory weights (-65, -65, -66, -65)
     wire [3:0] bram_addr = (!btn_s2_level) ? {1'b0, syn_pattern_idx, 1'b1} : 
                            (!btn_s1_level) ? {1'b0, syn_pattern_idx, 1'b0} : 
                            4'd0;
@@ -114,18 +127,18 @@ module top_lif_demo #(
         .dout(weight_dout)
     );
 
-    // Corriente sináptica final alimentada desde BRAM
+    // Final synaptic current fed into LIF core: driven by BSRAM read data or zero resting current
     wire signed [15:0] i_syn = (!btn_s2_level || !btn_s1_level) ? weight_dout : 16'sd0;
 
     // =========================================================================
-    // 4. NEURONA LIF (Con Hiperpolarización hasta -250 y Refractario de 320 ms)
+    // 4. LIF NEURON CORE (Hyperpolarization down to -250, 320 ms Refractory)
     // =========================================================================
     wire signed [15:0] v_mem;
 
     lif_neuron #(
         .V_TH(16'sd1000),
         .V_MIN(-16'sd250),
-        .REFRAC_TICKS(5'd16) // 16 ticks * 20 ms = 320 ms
+        .REFRAC_TICKS(5'd16) // 16 ticks * 20 ms = 320 ms absolute refractory period
     ) u_lif (
         .clk(clk),
         .rst_n(rst_n),
@@ -136,12 +149,12 @@ module top_lif_demo #(
     );
 
     // =========================================================================
-    // 5. EFECTO VISUAL DE SPIKE: RÁFAGA ESTROBOSCÓPICA (220 ms) + OSCURIDAD (100 ms)
-    // Temporizador: 220 ms (5,940,000 ciclos a 27 MHz)
-    // Ráfaga estroboscópica en led[5]: alternando cada 20 ms (~25 Hz)
+    // 5. ACTION POTENTIAL STROBE DISPLAY (220 ms Burst @ ~25 Hz)
+    // Strobe timer: 220 ms (5,940,000 cycles @ 27 MHz)
+    // High-visibility strobe on led[5]: toggles every 20 ms (~25 Hz)
     // =========================================================================
-    localparam [22:0] SPIKE_TIMER_CYCLES = 23'd5940000; // 220 ms a 27 MHz
-    localparam [19:0] STROBE_HALF_PERIOD = 20'd540000;  // 20 ms a 27 MHz (~25 Hz)
+    localparam [22:0] SPIKE_TIMER_CYCLES = 23'd5940000; // 220 ms @ 27 MHz
+    localparam [19:0] STROBE_HALF_PERIOD = 20'd540000;  // 20 ms @ 27 MHz (~25 Hz)
 
     reg [22:0] spike_timer;
     reg [19:0] strobe_cnt;
@@ -164,7 +177,7 @@ module top_lif_demo #(
                 strobe_cnt <= strobe_cnt - 20'd1;
             end else begin
                 strobe_cnt   <= STROBE_HALF_PERIOD;
-                strobe_blink <= ~strobe_blink; // Alterna a 25 Hz
+                strobe_blink <= ~strobe_blink; // Alternate @ 25 Hz
             end
         end else begin
             strobe_cnt   <= 20'd0;
@@ -173,8 +186,8 @@ module top_lif_demo #(
     end
 
     // =========================================================================
-    // 6. VÚMETRO ANALÓGICO CON PWM (~13.18 kHz)
-    // Proporciona fade-in / fade-out suave entre niveles sin saltos discretos
+    // 6. ANALOG VOLTMETER PWM ENGINE (~13.18 kHz)
+    // Provides seamless linear duty-cycle transitions across 5 LED thresholds
     // =========================================================================
     reg [10:0] pwm_clk_div;
     always @(posedge clk or negedge rst_n) begin
@@ -183,7 +196,7 @@ module top_lif_demo #(
         else
             pwm_clk_div <= pwm_clk_div + 11'd1;
     end
-    wire [7:0] pwm_cnt = pwm_clk_div[10:3]; // Contador de 8 bits a 13.18 kHz
+    wire [7:0] pwm_cnt = pwm_clk_div[10:3]; // 8-bit free-running counter @ 13.18 kHz
 
     reg [7:0] duty_0, duty_1, duty_2, duty_3, duty_4;
 
@@ -195,7 +208,7 @@ module top_lif_demo #(
             duty_3 <= 8'd0;
             duty_4 <= 8'd0;
         end else if (bio_tick) begin
-            // LED 0: 0 a 220
+            // LED 0: 0 to 220
             if (v_mem <= 16'sd0) begin
                 duty_0 <= 8'd0;
             end else if (v_mem >= 16'sd220) begin
@@ -204,7 +217,7 @@ module top_lif_demo #(
                 duty_0 <= (v_mem * 16'd255) / 16'd220;
             end
 
-            // LED 1: 220 a 440
+            // LED 1: 220 to 440
             if (v_mem <= 16'sd220) begin
                 duty_1 <= 8'd0;
             end else if (v_mem >= 16'sd440) begin
@@ -213,7 +226,7 @@ module top_lif_demo #(
                 duty_1 <= ((v_mem - 16'sd220) * 16'd255) / 16'd220;
             end
 
-            // LED 2: 440 a 640
+            // LED 2: 440 to 640
             if (v_mem <= 16'sd440) begin
                 duty_2 <= 8'd0;
             end else if (v_mem >= 16'sd640) begin
@@ -222,7 +235,7 @@ module top_lif_demo #(
                 duty_2 <= ((v_mem - 16'sd440) * 16'd255) / 16'd200;
             end
 
-            // LED 3: 640 a 800
+            // LED 3: 640 to 800
             if (v_mem <= 16'sd640) begin
                 duty_3 <= 8'd0;
             end else if (v_mem >= 16'sd800) begin
@@ -231,7 +244,7 @@ module top_lif_demo #(
                 duty_3 <= ((v_mem - 16'sd640) * 16'd255) / 16'd160;
             end
 
-            // LED 4: 800 a 920
+            // LED 4: 800 to 920
             if (v_mem <= 16'sd800) begin
                 duty_4 <= 8'd0;
             end else if (v_mem >= 16'sd920) begin
@@ -250,7 +263,7 @@ module top_lif_demo #(
 
     wire led_bar_en = !spike_active;
 
-    // LEDs son activos en bajo (0 = Encendido, 1 = Apagado)
+    // LEDs on Tang Nano 9K are active-low (0 = Illuminated, 1 = Extinguished)
     assign led[0] = ~(led_bar_en && pwm_out_0);
     assign led[1] = ~(led_bar_en && pwm_out_1);
     assign led[2] = ~(led_bar_en && pwm_out_2);
@@ -259,8 +272,8 @@ module top_lif_demo #(
     assign led[5] = ~(spike_active && strobe_blink);
 
     // =========================================================================
-    // 7. TELEMETRÍA UART EN VIVO A 115200 BAUDIOS (Pin 17)
-    // Trama binaria en cada bio_tick (50 Hz):
+    // 7. REAL-TIME 115200 BAUD UART TELEMETRY SERIALIZER (Pin 17)
+    // Binary frame emitted synchronously upon each bio_tick (50 Hz):
     // [0xAA] [0x55] [v_mem_H] [v_mem_L] [i_syn_H] [i_syn_L] [spike] [checksum] [0x0A]
     // =========================================================================
     reg [7:0] tx_byte;
@@ -319,8 +332,8 @@ module top_lif_demo #(
                 TELE_SEND: begin
                     if (!tx_busy) begin
                         case (tele_byte_cnt)
-                            4'd0: tx_byte <= 8'hAA; // Sync 1
-                            4'd1: tx_byte <= 8'h55; // Sync 2
+                            4'd0: tx_byte <= 8'hAA; // Sync byte 1
+                            4'd1: tx_byte <= 8'h55; // Sync byte 2
                             4'd2: tx_byte <= v_mem_snap[15:8];
                             4'd3: tx_byte <= v_mem_snap[7:0];
                             4'd4: tx_byte <= i_syn_snap[15:8];
@@ -328,8 +341,8 @@ module top_lif_demo #(
                             4'd6: tx_byte <= {7'd0, spike_snap};
                             4'd7: tx_byte <= v_mem_snap[15:8] ^ v_mem_snap[7:0] ^
                                              i_syn_snap[15:8] ^ i_syn_snap[7:0] ^
-                                             {7'd0, spike_snap}; // Checksum
-                            4'd8: tx_byte <= 8'h0A; // EOT ('\n')
+                                             {7'd0, spike_snap}; // Hardware XOR Checksum
+                            4'd8: tx_byte <= 8'h0A; // End of transmission ('\n')
                             default: tx_byte <= 8'd0;
                         endcase
                         tx_start   <= 1'b1;

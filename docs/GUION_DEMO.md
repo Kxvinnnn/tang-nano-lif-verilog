@@ -1,116 +1,114 @@
-# Guion de Demostración en Vivo: Acelerador Neuromórfico en FPGA Tang Nano 9K
+# Live Demonstration Script: Neuromorphic Accelerator on Tang Nano 9K FPGA
 
-**Duración Total Estimada:** 4:00 - 5:00 minutos  
-**Presentador:** Kevin Mejía Cedeño  
-**Director / Evaluador:** Daniel Arango Sohm  
-**Objetivo:** Demostrar la viabilidad de inferencia neuromórfica en silicio, su comportamiento físico biológicamente plausible, telemetría continua en tiempo real y verificación formal bit a bit.
+**Estimated Total Duration:** 4:00 - 5:00 minutes  
+**Presenter:** Kevin Mejía Cedeño  
+**Research Advisor / Evaluator:** Daniel Arango Sohm  
+**Objective:** Demonstrate the feasibility of neuromorphic inference in silicon, biologically plausible dynamics, continuous real-time telemetry, and formal bit-exact verification.
 
 ---
 
-## Preparación Previa a la Presentación (Checklist de 1 Minuto)
+## Pre-Demonstration Checklist (1-Minute Preparation)
 
-1. **Conectar la Tang Nano 9K** al puerto USB del computador (identificar que aparezca en el Administrador de Dispositivos como `COM4`).
-2. Abrir una terminal en el directorio del proyecto con el entorno virtual activado:
-   ```cmd
-   cd "C:\Users\kevincipher\Desktop\Manim studio proyecto"
+1. **Connect Tang Nano 9K** to host USB port (confirm presence as `COM4` in Device Manager or `/dev/ttyUSB*`).
+2. Open terminal in project root with virtual environment activated:
+   ```bash
+   cd "C:\Users\kevincipher\Desktop\Manim studio proyecto\snn_tangnano_vscode"
    ```
-3. Verificar que la pantalla esté lista para mostrar tanto la placa física como la ventana de telemetría / consola.
+3. Ensure display layout shows both the physical board (or camera feed) and the real-time telemetry window.
 
 ---
 
-## Minuto 1: Introducción y Planteamiento del Problema (0:00 - 1:00)
+## Minute 1: Introduction & Problem Statement (0:00 - 1:00)
 
-### Mensaje Clave:
-Superación del cuello de botella de von Neumann mediante computación neuromórfica en hardware dedicado con consumo de milivatios.
+### Key Message:
+Overcoming the Von Neumann bottleneck through event-driven neuromorphic computing on dedicated silicon with milliwatt power budgets.
 
-### Diálogo y Guion:
-> *"Buenas tardes, profesor Daniel y compañeros. Hoy presento los resultados del diseño, implementación en silicio y validación formal de un **acelerador neuromórfico embebido basado en el modelo biológico Leaky Integrate-and-Fire (LIF)**, ejecutándose de forma completamente autónoma sobre la FPGA Gowin GW1NR-9C de la plataforma Tang Nano 9K."*
+### Spoken Narrative:
+> *"Good afternoon, Professor Daniel and colleagues. Today I present the design, silicon implementation, and formal verification of an **embedded neuromorphic accelerator based on the biological Leaky Integrate-and-Fire (LIF) model**, running fully autonomously on the Gowin GW1NR-9C FPGA of the Tang Nano 9K platform."*
 >
-> *"En los sistemas tradicionales de Inteligencia Artificial basados en GPUs o CPUs, el procesamiento de tensores densos demanda decenas o cientos de vatios debido al constante trasiego de datos entre memoria y procesador. Nuestro diseño neuromórfico opera bajo el paradigma de computación orientada a eventos impulsada por reloj biológico: cuando no hay estímulos, la neurona permanece en reposo con un consumo menor a 15 milivatios, integrando corriente y generando disparos solo cuando es estrictamente necesario."*
+> *"In conventional AI systems deployed on GPUs or Von Neumann processors, dense tensor evaluations consume tens or hundreds of watts primarily due to the constant shuttling of data between external memory and processing cores. Our neuromorphic design operates on an event-driven paradigm governed by a biological clock: in the absence of stimuli, the neuron remains quiescent at sub-15-milliwatt power, integrating synaptic currents and emitting spikes only when physically necessary."*
 
 ---
 
-## Minuto 2: Demostración Física en Silicio y Dinámica Continua (1:00 - 2:15)
+## Minute 2: Physical Silicon Demo & Continuous Dynamics (1:00 - 2:15)
 
-### Mensaje Clave:
-Operación autónoma no volátil (Flash interna), vúmetro analógico PWM orgánico, fuga exponencial pasiva y potencial de acción bioeléctrico.
+### Key Message:
+Autonomous non-volatile operation (*embFlash*), organic PWM analog voltmeter, passive exponential decay, and bioelectrical action potentials.
 
-### Diálogo y Acciones Físicas:
-> *(Mostrar la placa en la mano o frente a la cámara, desconectarla y volverla a conectar)*  
-> *"Primero, destaco que este diseño está quemado de forma permanente en la memoria **Flash interna no volátil** del chip. No depende de una conexión a la PC para programarse en cada reinicio; al recibir energía de cualquier puerto USB o batería, el sistema arranca al instante."*
+### Spoken Narrative & Physical Actions:
+> *(Hold physical board in hand or before camera, disconnect and reconnect USB power)*  
+> *"First, notice that this hardware design is burned permanently into the **internal non-volatile Flash memory (`embFlash`)** of the FPGA. It requires no host PC connection or software bootloader; the moment it receives power from any USB port or battery pack, it boots instantaneously into active emulation."*
 >
-> *(Señalar los LEDs apagados)*  
-> *"La neurona corre a un paso biológico estricto de **50 Hz (cada 20 milisegundos)** generado por un prescaler a partir del oscilador maestro de 27 MHz."*
+> *(Point to quiescent LEDs)*  
+> *"The neuron updates on a strict **50 Hz biological time step ($\Delta t = 20.0$ ms)** generated by a hardware prescaler from the 27.0 MHz master oscillator."*
 >
-> *(Presionar y mantener presionado el pulsador S1)*  
-> *"Ahora voy a aplicar un estímulo excitatorio continuo manteniendo presionado el botón S1. Los pesos sinápticos provienen de un bloque de memoria **BRAM interna**. Noten la suavidad del ascenso en los primeros 5 LEDs: hemos implementado un **vúmetro analógico con modulación PWM a 13.2 kHz**, de modo que el brillo varía orgánicamente según el residuo fraccional del potencial."*
+> *(Press and hold button S1)*  
+> *"Now I apply a sustained excitatory stimulus by holding down push-button S1. The synaptic weights are retrieved synchronously from an **internal BSRAM block**. Observe the smooth upward progression across the first 5 LEDs: we implemented a **13.2 kHz 8-bit PWM analog voltmeter**, allowing LED brightness to modulate organically with the fractional remainder of the membrane potential."*
 >
-> *(Mantener presionado S1 hasta que dispare a los ~0.8 segundos)*  
-> *"Al cruzar el umbral de 1000 unidades arbitrarias, observen el sexto LED: se activa una **ráfaga estroboscópica a 25 Hz durante 220 milisegundos**, simbolizando el potencial de acción bioeléctrico, seguido de un apagón de 100 milisegundos. Esto corresponde exactamente al **periodo refractario biológico de 320 milisegundos**, durante el cual la neurona es inmune a nuevos estímulos."*
+> *(Hold S1 until threshold crossing at ~0.76 s)*  
+> *"Upon crossing the 1000-unit threshold, observe LED 5: a **25 Hz stroboscopic burst activates for 220 ms**, representing the bioelectrical action potential, followed by a 100 ms blackout. This completes the **320 ms biological refractory period**, during which the neuron is clamped and completely immune to new stimuli."*
 >
-> *(Subir la barra hasta la mitad con S1 y luego soltarlo)*  
-> *"Si interrumpo el estímulo a mitad de camino, pueden apreciar la **fuga pasiva simétrica (leak)**: el potencial decae exponencialmente de vuelta a cero sin atascarse gracias a la aritmética adaptativa con signo."*
+> *(Integrate partially with S1 and release)*  
+> *"If I release the button mid-charge, you can observe the **symmetric passive exponential leak**: the potential decays asymptotically back to baseline without deadlocks thanks to signed 16-bit adaptive arithmetic."*
 >
-> *(Presionar S2)*  
-> *"Finalmente, el pulsador S2 inyecta corriente inhibitoria negativa, empujando el potencial hacia la **hiperpolarización**, donde nuestro circuito satura de forma segura en -250 para evitar desbordamientos numéricos."*
+> *(Press S2)*  
+> *"Finally, button S2 injects inhibitory current, driving the potential into **hyperpolarization**, where the arithmetic logic saturates safely at -250 to prevent integer overflow."*
 
 ---
 
-## Minuto 3: Telemetría en Vivo por UART (2:15 - 3:30)
+## Minute 3: Real-Time UART Telemetry (2:15 - 3:30)
 
-### Mensaje Clave:
-Observabilidad y telemetría de grado industrial a 115,200 baudios con visualización interactiva.
+### Key Message:
+Industrial-grade observability at 115,200 baud with interactive visualization.
 
-### Acción en la Computadora:
-Lanzar en la terminal el script de escucha interactiva:
-```cmd
-.venv\Scripts\python.exe telemetry_listener.py --port COM4
+### Host Terminal Action:
+Launch real-time telemetry listener:
+```bash
+python telemetry/telemetry_listener.py --port COM4 --baud 115200
 ```
-*(O en su defecto con la bandera `--console` si se prefiere proyectar en terminal)*:
-```cmd
-.venv\Scripts\python.exe telemetry_listener.py --port COM4 --console
-```
-
-### Diálogo y Demostración en Pantalla:
-> *"Para garantizar la observabilidad de las variables de estado internas, la FPGA transmite a través de su pin 17 un enlace serial **UART a 115,200 baudios** con tramas de 9 bytes a 50 Hz protegidas por suma de comprobación XOR."*
->
-> *(Interactuar con los botones S1 y S2 mientras la gráfica o la consola se actualiza en vivo)*  
-> *"En la pantalla pueden observar la traza continua del potencial de membrana $V_{mem}$, la corriente sináptica $I_{syn}$ y los marcadores exactos donde el hardware emite un spike. La gráfica responde en tiempo real con una latencia imperceptible, demostrando la fidelidad de la dinámica diferencial implementada en Verilog."*
-
----
-
-## Minuto 4: Verificación Formal y Validación Cruzada (3:30 - 4:30)
-
-### Mensaje Clave:
-Rigor de ingeniería: coincidencia 100% bit a bit entre el RTL sintetizado, el Testbench y el modelo matemático en Python.
-
-### Acción en la Computadora:
-Mostrar la ejecución del testbench y del modelo matemático:
-```cmd
-# 1. Ejecutar el modelo matemático golden:
-.venv\Scripts\python.exe src_py\lif_math_model.py
-
-# 2. Ejecutar la simulación funcional del Testbench:
-call C:\oss-cad-suite\environment.bat
-vvp build\sim_tb_lif_neuron.vvp
+*(Or in terminal-only mode with `--console`)*:
+```bash
+python telemetry/telemetry_listener.py --port COM4 --console
 ```
 
-### Diálogo de Conclusión:
-> *"Todo este desarrollo fue verificado bajo estándares formales de diseño ASIC/FPGA:*
+### Spoken Narrative & Screen Demonstration:
+> *"To ensure complete observability of internal state variables without introducing parasitic delays, the FPGA streams a synchronous **115,200 baud UART serial link** on Pin 17, emitting 9-byte binary packets at 50 Hz protected by an XOR checksum."*
 >
-> 1. *Desarrollamos un **banco de pruebas en Verilog (`tb_lif_neuron.v`)** que evalúa 132 ticks biológicos, verificando el reset, la curva de integración, el periodo refractario rígido, la hiperpolarización y la fuga pasiva, arrojando **cero errores** y generando formas de onda VCD para análisis en GTKWave o el Gowin Simulator.*
-> 2. *Construimos un **modelo de equivalencia en Python (`lif_equivalence.py` y `lif_math_model.py`)** con aritmética fija de 16 bits idéntica al RTL. Como pueden ver en la tabla de comprobación en pantalla, existe una **coincidencia del 100% bit a bit (R = 1.0000, RMSE = 0.0)** entre la ecuación teórica y los registros en silicio.*
-> 3. *En términos de silicio, el diseño utiliza apenas **833 LUTs (9.6%) y 207 flip-flops (3.1%)**, dejando más del 90% de la FPGA disponible para escalar a redes multicapa con plasticidad sináptica dependiente del tiempo de disparo (STDP)."*
+> *(Interact with buttons S1 and S2 while the GUI updates live)*  
+> *"On screen you can observe the continuous trace of membrane potential $V_{mem}$, injected synaptic current $I_{syn}$, and the exact raster markers where the hardware generates an action potential spike. The display responds in real time with imperceptible latency, demonstrating the fidelity of our Verilog differential dynamics."*
 
 ---
 
-## Preguntas Frecuentes y Respuestas Rápidas (Q&A de Soporte)
+## Minute 4: Formal Verification & Cross-Validation (3:30 - 4:30)
 
-**P1: ¿Por qué eligió 50 Hz para el bio_tick y no una frecuencia de megahertzios?**  
-*R:* El reloj base de 27 MHz se utiliza para la síntesis de frecuencia, el PWM de los LEDs (a 13.2 kHz) y la UART (a 115.2 kBaud). Sin embargo, la ecuación diferencial de la neurona se actualiza a 50 Hz porque emula la escala temporal de las neuronas biológicas reales (constantes de tiempo de membrana de decenas de milisegundos) y permite la interactividad humana táctil sin requerir microcontroladores intermediarios.
+### Key Message:
+ASIC/FPGA engineering rigor: 100% bit-exact equivalence between synthesized RTL, Testbenches, and Python mathematical models.
 
-**P2: ¿Cómo se garantiza que no haya desbordamiento aritmético en la resta de la fuga?**  
-*R:* En `lif_neuron.v` se implementó una lógica de saturación inferior en el límite de hiperpolarización ($V_{MIN} = -250$) y una fuga simétrica no lineal que si $v_{mem} > 0$ resta $\max(1, v_{mem} \gg 4)$ y si $v_{mem} < 0$ suma $\max(1, |v_{mem}| \gg 4)$, garantizando convergencia asintótica incondicional hacia 0.
+### Host Terminal Action:
+Run mathematical model and testbench:
+```bash
+# 1. Run golden mathematical model:
+python src_py/lif_math_model.py
 
-**P3: ¿Qué herramienta se utilizó para programar la Flash interna?**  
-*R:* Se utilizó `programmer_cli.exe` de Gowin con el parámetro de ejecución `--run 5` (`embFlash Erase,Program`), grabando directamente el archivo `.fs` en el bloque de memoria no volátil embebido en el chip GW1NR-9C.
+# 2. Run functional testbench:
+vvp build/sim_tb_lif_neuron.vvp
+```
+
+### Concluding Narrative:
+> *"This entire architecture was validated under formal digital design standards:*
+> 1. *We developed a **Verilog testbench (`tb_lif_neuron.v`)** evaluating 132 biological ticks across reset, integration, refractory locking, hyperpolarization, and passive decay, yielding **zero errors** and clean VCD waveforms.*
+> 2. *We constructed an **equivalence model in Python (`lif_equivalence.py`)** with matching 16-bit fixed-point arithmetic. As shown in the correlation report, there is a **100% bit-exact match ($R = 1.0000$, $\text{RMSE} = 0.0$)** between theoretical equations and physical silicon registers.*
+> 3. *In terms of silicon footprint, the core occupies only **833 LUTs (9.6%) and 207 flip-flops (3.1%)**, leaving over 90% of the FPGA free for scaling to multi-layer networks with spike-timing-dependent plasticity (STDP)."*
+
+---
+
+## Frequently Asked Questions (Defense Q&A)
+
+**Q1: Why choose 50 Hz for bio_tick rather than a megahertz clock?**  
+*A:* The 27 MHz master clock handles frequency synthesis, 13.2 kHz LED PWM, and 115.2 kBaud UART. However, the biological membrane differential equation updates at 50 Hz because it faithfully matches biological neuron time constants (tens to hundreds of milliseconds) and allows organic human tactile interaction without requiring intermediary microcontrollers.
+
+**Q2: How do you guarantee no arithmetic overflow occurs during leak subtraction?**  
+*A:* `lif_neuron.v` incorporates lower saturation clamping at the hyperpolarization floor ($V_{MIN} = -250$) and an 18-bit signed extended adder that forces rigid saturation between $+32,767$ and $-250$, guaranteeing unconditional asymptotic convergence toward zero.
+
+**Q3: Which tool was used to flash internal non-volatile memory?**  
+*A:* Gowin's `programmer_cli.exe` with execution mode `--run 5` (`embFlash Erase,Program`), flashing the bitstream directly into the embedded non-volatile memory of the GW1NR-9C chip.

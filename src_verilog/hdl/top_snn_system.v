@@ -10,7 +10,7 @@ module top_snn_system #(
     output wire        uart_tx, 
     output wire [5:0]  led
 );
-    // Debouncer y acondicionamiento del reset externo activo en bajo
+    // Debouncer and signal conditioning for active-low external reset
     wire rst_pressed_clean;
     button_debouncer #(
         .CLK_FREQ(CLK_FREQ),
@@ -21,7 +21,7 @@ module top_snn_system #(
         .btn_clean_out(rst_pressed_clean)
     );
 
-    // Sincronizador de reset para mitigación de Recovery / Removal (AASD)
+    // Reset synchronizer for Recovery/Removal timing mitigation (AASD)
     reg [1:0] rst_clean_sync = 2'b00;
     always @(posedge clk or posedge rst_pressed_clean) begin
         if (rst_pressed_clean)

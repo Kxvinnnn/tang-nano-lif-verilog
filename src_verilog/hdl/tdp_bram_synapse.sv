@@ -1,8 +1,8 @@
 // =============================================================================
 // tdp_bram_synapse.sv
-// Memoria True Dual-Port BRAM para Matriz Sináptica (GW1NR-9C)
-// Puerto A: Lectura síncrona para el núcleo TDM (100 MHz)
-// Puerto B: Lectura/Escritura síncrona para el bus CSR de reconfiguración
+// True Dual-Port BRAM Memory for Synaptic Matrix (GW1NR-9C)
+// Port A: Synchronous read for TDM core (100 MHz)
+// Port B: Synchronous Read/Write for CSR runtime reconfiguration bus
 // =============================================================================
 
 `timescale 1ns / 1ps
@@ -11,15 +11,15 @@ module tdp_bram_synapse #(
     parameter int ADDR_WIDTH = 14,
     parameter int DATA_WIDTH = 16,
     parameter int DEPTH      = 1024,
-    parameter     INIT_FILE  = "data/pesos_sinapticos.hex"
+    parameter     INIT_FILE  = "data/synaptic_weights.hex"
 )(
-    // Puerto A: Núcleo TDM (Lectura)
+    // Port A: TDM Core (Read)
     input  logic                  clk_a,
     input  logic                  en_a,
     input  logic [ADDR_WIDTH-1:0] addr_a,
     output logic [DATA_WIDTH-1:0] rdata_a,
 
-    // Puerto B: Bus CSR (Lectura / Escritura en caliente)
+    // Port B: CSR Bus (Read / Hot Write)
     input  logic                  clk_b,
     input  logic                  en_b,
     input  logic                  we_b,

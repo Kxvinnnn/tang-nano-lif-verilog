@@ -1,4 +1,11 @@
 `timescale 1ns / 1ps
+// =============================================================================
+// uart_transceiver.v - Synchronous Serial UART Transceiver (8-N-1)
+// Architecture Features:
+//   - Parameterized baud rate divider (default 115200 bps @ 27 MHz -> 234 clocks/bit)
+//   - Non-blocking state machine preventing back-pressure onto upstream ALU
+//   - Deterministic reset initialization ensuring zero unknown states
+// =============================================================================
 
 module uart_transceiver #(
     parameter CLK_FREQ  = 27000000,
@@ -17,7 +24,7 @@ module uart_transceiver #(
 
     localparam CLKS_PER_BIT = CLK_FREQ / BAUD_RATE; // 27,000,000 / 115,200 = 234
 
-    // FSM del Transmisor UART (8-N-1)
+    // UART Transmitter FSM States (Standard 8-N-1 Framing)
     localparam TX_IDLE  = 2'd0;
     localparam TX_START = 2'd1;
     localparam TX_DATA  = 2'd2;
@@ -52,7 +59,7 @@ module uart_transceiver #(
                 end
 
                 TX_START: begin
-                    tx <= 1'b0; // Start bit
+                    tx <= 1'b0; // Active-low Start bit
                     if (tx_clk_cnt < CLKS_PER_BIT - 1) begin
                         tx_clk_cnt <= tx_clk_cnt + 9'd1;
                     end else begin
@@ -78,7 +85,7 @@ module uart_transceiver #(
                 end
 
                 TX_STOP: begin
-                    tx <= 1'b1; // Stop bit
+                    tx <= 1'b1; // Stop bit (idle high)
                     if (tx_clk_cnt < CLKS_PER_BIT - 1) begin
                         tx_clk_cnt <= tx_clk_cnt + 9'd1;
                     end else begin

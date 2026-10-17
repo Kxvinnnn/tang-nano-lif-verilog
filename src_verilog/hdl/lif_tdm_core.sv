@@ -1,31 +1,31 @@
 // =============================================================================
 // lif_tdm_core.sv
-// Núcleo Acelerador Neuromórfico LIF con Multiplexación por División de Tiempo (TDM)
-// Arquitectura: 100 Neuronas emuladas por una única ALU LIF de 16 bits
-// Estándar: SystemVerilog IEEE 1800-2017
+// LIF Neuromorphic Accelerator Core with Time-Division Multiplexing (TDM)
+// Architecture: 100 Neurons emulated via a single 16-bit LIF ALU
+// Standard: SystemVerilog IEEE 1800-2017
 // =============================================================================
 
 `timescale 1ns / 1ps
 
 package lif_tdm_pkg;
-    // Parámetros electrofisiológicos y constantes del hardware
+    // Electrophysiological parameters and hardware constants
     localparam int NUM_NEURONS       = 100;
     localparam logic signed [15:0] V_REST  = 16'sd0;      // -70.0 mV base
-    localparam logic signed [15:0] V_TH    = 16'sd1000;   // -50.0 mV umbral (20 uV / LSB)
-    localparam logic signed [15:0] V_MIN   = -16'sd250;   // -75.0 mV piso hiperpolarización
-    localparam logic signed [15:0] V_MAX   = 16'sd32767;  // Techo dinámico saturación
-    localparam logic [4:0]  REFRACTORY_MAX = 5'd16;       // 16 ticks refractarios (320 ms)
+    localparam logic signed [15:0] V_TH    = 16'sd1000;   // -50.0 mV threshold (20 uV / LSB)
+    localparam logic signed [15:0] V_MIN   = -16'sd250;   // -75.0 mV hyperpolarization floor
+    localparam logic signed [15:0] V_MAX   = 16'sd32767;  // Dynamic saturation ceiling
+    localparam logic [4:0]  REFRACTORY_MAX = 5'd16;       // 16 refractory ticks (320 ms)
 
-    // Estructura tipada de estado neuronal
+    // Typed neuronal state structure
     typedef struct packed {
-        logic signed [15:0] v_mem;       // Potencial de membrana (-250 a +32767)
-        logic [4:0]         refractory;  // Contador de periodo refractario
+        logic signed [15:0] v_mem;       // Membrane potential (-250 to +32767)
+        logic [4:0]         refractory;  // Refractory period counter
     } neuron_state_t;
 
-    // Estructura de evento de disparo AER
+    // AER spike event structure
     typedef struct packed {
-        logic [6:0] neuron_id;           // Identificador de neurona (0 a 99)
-        logic [8:0] tag;                 // Marca de tiempo / metadatos
+        logic [6:0] neuron_id;           // Neuron identifier (0 to 99)
+        logic [8:0] tag;                 // Timestamp / metadata tag
     } spike_event_t;
 endpackage : lif_tdm_pkg
 
@@ -34,33 +34,33 @@ import lif_tdm_pkg::*;
 module lif_tdm_core #(
     parameter int N_NEURONS = NUM_NEURONS
 )(
-    input  logic        clk,             // Reloj maestro del núcleo (ej. 100 MHz)
-    input  logic        rst_n,           // Reset asíncrono activo en bajo
-    input  logic        enable,          // Habilitación de procesamiento
-    input  logic        bio_tick,        // Disparo de época biológica (50 Hz / 20 ms)
+    input  logic        clk,             // Core master clock (e.g., 100 MHz)
+    input  logic        rst_n,           // Asynchronous active-low reset
+    input  logic        enable,          // Processing enable
+    input  logic        bio_tick,        // Biological epoch trigger (50 Hz / 20 ms)
 
-    // Parámetros de umbral dinámico (desde registros CSR)
+    // Dynamic threshold parameters (from CSR registers)
     input  logic signed [15:0] cfg_v_th,
     input  logic [4:0]         cfg_refractory,
 
-    // Interfaz Puerto A de Memoria Sináptica (BRAM Lectura de Pesos)
+    // Synaptic Memory Port A Interface (BRAM Weight Read)
     output logic [13:0]        bram_a_addr,
     output logic               bram_a_en,
     input  logic signed [15:0] bram_a_rdata,
 
-    // Interfaz de emisión de disparos (Hacia Transmisor AER)
+    // Spike event emission interface (To AER Transmitter)
     output logic               spike_valid,
     output logic [6:0]         spike_neuron_id,
     input  logic               spike_ready,
 
-    // Estado de monitoreo
+    // Monitoring status
     output logic               tdm_active,
     output logic [6:0]         current_neuron_idx,
     output logic [15:0]        total_spikes_epoch
 );
 
     // -------------------------------------------------------------------------
-    // Memoria interna de estado de neuronas (100 palabras)
+    // Internal neuronal state memory (100 words)
     // -------------------------------------------------------------------------
     neuron_state_t state_ram [0:N_NEURONS-1];
     neuron_state_t read_state;
@@ -109,16 +109,16 @@ module lif_tdm_core #(
     assign bram_a_en   = (state_q == TDM_FETCH || state_q == TDM_PIPELINE);
 
     // -------------------------------------------------------------------------
-    // Lógica Combinacional de la ALU LIF (Matemática Discreta Exacta)
+    // LIF ALU Combinational Logic (Exact Discrete Mathematics)
     // -------------------------------------------------------------------------
     always_comb begin
-        // Fuga asintótica mediante desplazamiento aritmético a la derecha (6.25% de decaimiento)
+        // Asymptotic leak via arithmetic right shift (6.25% decay per tick)
         v_leak = pipe_state_q.v_mem >>> 4;
 
-        // Sumador extendido de 18 bits con signo para prevención de overflow circular
+        // 18-bit signed extended adder for circular overflow prevention
         v_sum_extended = 18'(pipe_state_q.v_mem) - 18'(v_leak) + 18'(pipe_isyn_q);
 
-        // Clamping hardware simétrico: Techo en +32767, piso en -250 (Hiperpolarización)
+        // Symmetric hardware clamping: Ceiling at +32767, floor at -250 (Hyperpolarization)
         if (v_sum_extended > 18'(V_MAX)) begin
             v_clamped = V_MAX;
         end else if (v_sum_extended < 18'(V_MIN)) begin
@@ -127,14 +127,14 @@ module lif_tdm_core #(
             v_clamped = v_sum_extended[15:0];
         end
 
-        // Dinámica del periodo refractario absoluto y umbral de disparo
+        // Absolute refractory period dynamics and spike threshold evaluation
         if (pipe_state_q.refractory > 5'd0) begin
-            // Bloqueo refractario activo: membrana anclada a reposo (0)
+            // Active refractory clamp: membrane clamped to resting state (0)
             alu_spike       = 1'b0;
             v_next          = V_REST;
             refractory_next = pipe_state_q.refractory - 5'd1;
         end else begin
-            // Evaluación contra el umbral de disparo configurado
+            // Evaluate against configured spike threshold
             if (v_clamped >= cfg_v_th) begin
                 alu_spike       = 1'b1;
                 v_next          = V_REST;
@@ -170,23 +170,23 @@ module lif_tdm_core #(
             end
 
             TDM_FETCH: begin
-                // Lectura de estado desde RAM interna y peso desde BRAM Port A
+                // Read state from internal RAM and weight from BRAM Port A
                 state_rd_addr = neuron_ptr_q;
                 state_d       = TDM_PIPELINE;
             end
 
             TDM_PIPELINE: begin
-                // Espera de 1 ciclo para que la memoria BRAM y RAM de estado entreguen datos estables
+                // Wait 1 cycle for BRAM and state RAM to output stable synchronous data
                 state_d = TDM_EVALUATE;
             end
 
             TDM_EVALUATE: begin
-                // La ALU computa v_next, refractory_next y alu_spike
+                // ALU computes v_next, refractory_next, and alu_spike
                 state_d = TDM_WRITEBACK;
             end
 
             TDM_WRITEBACK: begin
-                // Escritura de retorno del estado evaluado
+                // Write back evaluated state
                 state_wr_en = 1'b1;
                 state_wr_addr = pipe_id_q;
                 write_state = '{v_mem: v_next, refractory: refractory_next};
@@ -195,7 +195,7 @@ module lif_tdm_core #(
                     spike_accum_d = spike_accum_q + 1'b1;
                 end
 
-                // Avance al siguiente nodo o finalización de época TDM
+                // Advance to next neuron or complete TDM epoch
                 if (neuron_ptr_q >= (N_NEURONS - 1)) begin
                     state_d = TDM_DONE;
                 end else begin
@@ -213,7 +213,7 @@ module lif_tdm_core #(
     end
 
     // -------------------------------------------------------------------------
-    // Registros Síncronos y Emisión de Spikes
+    // Synchronous Registers and Spike Emission
     // -------------------------------------------------------------------------
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -230,19 +230,19 @@ module lif_tdm_core #(
             neuron_ptr_q  <= neuron_ptr_d;
             spike_accum_q <= spike_accum_d;
 
-            // Pipeline de lectura
+            // Read pipeline
             if (state_q == TDM_PIPELINE) begin
                 pipe_id_q    <= neuron_ptr_q;
                 pipe_state_q <= state_ram[neuron_ptr_q];
                 pipe_isyn_q  <= bram_a_rdata;
             end
 
-            // Escritura en RAM de estado
+            // Write to state RAM
             if (state_wr_en) begin
                 state_ram[state_wr_addr] <= write_state;
             end
 
-            // Generación de pulso de spike hacia AER
+            // Generate spike strobe towards AER
             if (state_q == TDM_WRITEBACK && alu_spike) begin
                 spike_valid     <= 1'b1;
                 spike_neuron_id <= pipe_id_q;
@@ -252,7 +252,7 @@ module lif_tdm_core #(
         end
     end
 
-    // Inicialización explícita del estado de las 100 neuronas
+    // Explicit state initialization for 100 neurons
     initial begin
         for (int i = 0; i < N_NEURONS; i++) begin
             state_ram[i] = '{v_mem: V_REST, refractory: 5'd0};
@@ -260,33 +260,33 @@ module lif_tdm_core #(
     end
 
     // =========================================================================
-    // SYSTEMVERILOG ASSERTIONS (SVA) - VERIFICACIÓN FORMAL INTEGRADA
+    // SYSTEMVERILOG ASSERTIONS (SVA) - FORMAL INTEGRATED VERIFICATION
     // =========================================================================
     // synthesis translate_off
 
-    // 1. Invariante de Frontera: El puntero TDM jamás debe superar el límite de 100 neuronas
+    // 1. Boundary Invariant: TDM pointer must never exceed N_NEURONS limit
     property p_neuron_ptr_bounded;
         @(posedge clk) disable iff (!rst_n)
         neuron_ptr_q < N_NEURONS;
     endproperty
     assert_neuron_ptr_bounded: assert property (p_neuron_ptr_bounded)
-        else $fatal(1, "[SVA CRITICAL] neuron_ptr_q desbordó el límite N_NEURONS: %0d >= %0d", neuron_ptr_q, N_NEURONS);
+        else $fatal(1, "[SVA CRITICAL] neuron_ptr_q exceeded N_NEURONS limit: %0d >= %0d", neuron_ptr_q, N_NEURONS);
 
-    // 2. Integridad de Clamping Aritmético: v_mem escrito en memoria debe respetar [-250, +32767]
+    // 2. Arithmetic Clamping Integrity: v_mem written to memory must strictly respect [-250, +32767]
     property p_v_mem_clamped_range;
         @(posedge clk) disable iff (!rst_n)
         state_wr_en |-> (write_state.v_mem >= V_MIN && write_state.v_mem <= V_MAX);
     endproperty
     assert_v_mem_clamped_range: assert property (p_v_mem_clamped_range)
-        else $error("[SVA ERROR] write_state.v_mem fuera de rango de saturación: %0d", write_state.v_mem);
+        else $error("[SVA ERROR] write_state.v_mem out of saturation bounds: %0d", write_state.v_mem);
 
-    // 3. Post-Spike Determinism: La emisión de spike obliga a reset a V_REST y recarga refractaria
+    // 3. Post-Spike Determinism: Spike emission mandates reset to V_REST and refractory reload
     property p_spike_reset_determinism;
         @(posedge clk) disable iff (!rst_n)
         (state_q == TDM_WRITEBACK && alu_spike) |-> (write_state.v_mem == V_REST && write_state.refractory == cfg_refractory);
     endproperty
     assert_spike_reset_determinism: assert property (p_spike_reset_determinism)
-        else $error("[SVA ERROR] Spike emitido sin anclaje en V_REST o sin recarga refractaria válida.");
+        else $error("[SVA ERROR] Spike emitted without clamping at V_REST or valid refractory reload.");
 
     // synthesis translate_on
 

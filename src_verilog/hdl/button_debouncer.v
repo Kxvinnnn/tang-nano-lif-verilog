@@ -1,8 +1,10 @@
 `timescale 1ns / 1ps
 // =============================================================================
-// button_debouncer.v - Acondicionador de Señal Físico Industrial
-// Topología: Cadena 2-FF de Sincronización + Filtro Antirrebote Parametrizable
-// Cumplimiento: Sin dependencia de bloques 'initial', reset determinista (AASD)
+// button_debouncer.v - Industrial-Grade Physical Signal Conditioner
+// Topology:
+//   - Stage 1: 2-FF Synchronizer chain mitigating asynchronous metastability
+//   - Stage 2: Parameterizable temporal hysteresis debounce counter
+// Compliance: Zero reliance on 'initial' blocks, deterministic reset (AASD)
 // =============================================================================
 
 module button_debouncer #(
@@ -10,31 +12,31 @@ module button_debouncer #(
     parameter DEBOUNCE_TIME_MS = 20
 )(
     input  wire clk,
-    input  wire rst_n,          // Reset síncrono/asíncrono activo en bajo
-    input  wire btn_async_in,
-    output reg  btn_clean_out
+    input  wire rst_n,          // Active-low synchronous/asynchronous reset
+    input  wire btn_async_in,   // Raw asynchronous mechanical input (active-low with pull-up)
+    output reg  btn_clean_out   // Clean, debounced level (active-high on press)
 );
     localparam COUNT_MAX = (CLK_FREQ / 1000) * DEBOUNCE_TIME_MS;
     localparam CNT_WIDTH = (COUNT_MAX > 1) ? $clog2(COUNT_MAX) : 1;
     
-    // Etapa 1: Prevención de Metaestabilidad (Cadena Doble Flip-Flop)
-    // S1/S2 en Tang Nano poseen resistencias Pull-Up (reposo en 1)
+    // Stage 1: Metastability Mitigation (Dual Flip-Flop Synchronizer)
+    // S1/S2 pushbuttons on Tang Nano 9K have hardware pull-ups (idle high = 1'b1)
     reg sync_0;
     reg sync_1;
 
-    // Etapa 2: Filtro de Rebote Mecánico con Histéresis Temporal
+    // Stage 2: Mechanical Bounce Filter with Temporal Integration Hysteresis
     reg [CNT_WIDTH-1:0] counter;
     reg                 state;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            sync_0        <= 1'b1; // Reposo con Pull-Up activo
+            sync_0        <= 1'b1; // Idle state with active pull-up
             sync_1        <= 1'b1;
             counter       <= {CNT_WIDTH{1'b0}};
             state         <= 1'b1;
-            btn_clean_out <= 1'b0; // Inactivo en reposo
+            btn_clean_out <= 1'b0; // Inactive in resting state
         end else begin
-            // Doble Flip-Flop para mitigar metaestabilidad
+            // 2-FF synchronizer sampling
             sync_0 <= btn_async_in;
             sync_1 <= sync_0;
 
@@ -42,7 +44,7 @@ module button_debouncer #(
                 if (counter >= COUNT_MAX - 1) begin
                     state         <= sync_1;
                     counter       <= {CNT_WIDTH{1'b0}};
-                    btn_clean_out <= ~sync_1; // Activo en alto cuando botón está presionado (0 físico)
+                    btn_clean_out <= ~sync_1; // Active-high when pressed (physical logic 0)
                 end else begin
                     counter <= counter + 1'b1;
                 end

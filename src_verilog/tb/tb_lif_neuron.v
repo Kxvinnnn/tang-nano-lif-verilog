@@ -1,16 +1,15 @@
 `timescale 1ns / 1ps
-
 // =============================================================================
-// Banco de Pruebas: tb_lif_neuron.v
-// Módulo bajo prueba (DUT): lif_neuron.v
-// Estándar de verificación: Verificación funcional y temporal a nivel RTL
-// Reloj base del sistema: 27 MHz (Periodo: 37.037 ns)
+// Testbench: tb_lif_neuron.v
+// Device Under Test (DUT): lif_neuron.v
+// Verification Standard: Cycle-Accurate Functional & Temporal RTL Verification
+// Master Clock Frequency: 27.0 MHz (Period: 37.037 ns)
 // =============================================================================
 
 module tb_lif_neuron;
 
     // -------------------------------------------------------------------------
-    // Parámetros de Simulación y Constantes
+    // Simulation Parameters & Time Constants
     // -------------------------------------------------------------------------
     parameter CLK_PERIOD       = 37.037;  // 27.0 MHz (~37.037 ns)
     parameter CLK_HALF_PERIOD  = CLK_PERIOD / 2.0;
@@ -20,7 +19,7 @@ module tb_lif_neuron;
     parameter [4:0]         REFRAC_TICKS = 5'd16;
 
     // -------------------------------------------------------------------------
-    // Señales de Estímulo y Monitoreo
+    // Stimulus and Monitor Signals
     // -------------------------------------------------------------------------
     reg                clk;
     reg                rst_n;
@@ -30,14 +29,14 @@ module tb_lif_neuron;
     wire signed [15:0] v_mem;
     wire               spike;
 
-    // Variables de control de verificación
+    // Verification control variables
     integer tick_counter;
     integer errors;
     integer spike_occurred_tick;
     reg     spike_detected;
 
     // -------------------------------------------------------------------------
-    // Instanciación del Dispositivo Bajo Prueba (DUT)
+    // Device Under Test (DUT) Instantiation
     // -------------------------------------------------------------------------
     lif_neuron #(
         .V_TH         (V_TH),
@@ -53,7 +52,7 @@ module tb_lif_neuron;
     );
 
     // -------------------------------------------------------------------------
-    // Generador de Reloj Maestro (27 MHz)
+    // Master Clock Generator (27.0 MHz)
     // -------------------------------------------------------------------------
     initial begin
         clk = 1'b0;
@@ -61,7 +60,7 @@ module tb_lif_neuron;
     end
 
     // -------------------------------------------------------------------------
-    // Tarea: Generar un pulso síncrono de bio_tick (1 ciclo de reloj a 27 MHz)
+    // Task: Generate Synchronous bio_tick Pulse (1 clock cycle @ 27 MHz)
     // -------------------------------------------------------------------------
     task send_bio_tick;
         input integer cycles_wait;
@@ -76,23 +75,23 @@ module tb_lif_neuron;
             if (spike === 1'b1) begin
                 spike_detected = 1'b1;
                 spike_occurred_tick = tick_counter;
-                $display("  >>> [EVENTO SPIKE DETECTADO] en Tick #%0d (Tiempo sim: %0t ps) superando V_TH=%0d", 
+                $display("  >>> [SPIKE EVENT DETECTED] at Tick #%0d (Sim Time: %0t ps) crossing V_TH=%0d", 
                          tick_counter, $time, V_TH);
             end
-            // Intervalo inter-tick para simulación (permite visualizar la estabilidad entre ticks)
+            // Inter-tick spacing for simulation waveforms
             repeat (cycles_wait) @(posedge clk);
         end
     endtask
 
     // -------------------------------------------------------------------------
-    // Secuencia Principal de Estímulos y Verificación
+    // Main Stimulus and Assertion Sequence
     // -------------------------------------------------------------------------
     initial begin
-        // Configuración de volcado VCD para análisis en GTKWave / Gowin Simulator
+        // VCD waveform dump for GTKWave / ModelSim / Gowin Simulator
         $dumpfile("tb_lif_neuron.vcd");
         $dumpvars(0, tb_lif_neuron);
 
-        // Inicialización de variables
+        // Variable initialization
         rst_n               = 1'b0;
         bio_tick            = 1'b0;
         synaptic_in         = 16'sd0;
@@ -102,34 +101,34 @@ module tb_lif_neuron;
         spike_occurred_tick = 0;
 
         $display("============================================================================");
-        $display("  INICIANDO VERIFICACIÓN FUNCIONAL RTL: NEURONA LEAKY INTEGRATE-AND-FIRE");
-        $display("  DUT: lif_neuron.v | Reloj: 27 MHz | V_TH=%0d | V_MIN=%0d | Refrac=%0d ticks", 
+        $display("  STARTING RTL FUNCTIONAL VERIFICATION: LEAKY INTEGRATE-AND-FIRE NEURON");
+        $display("  DUT: lif_neuron.v | Clock: 27 MHz | V_TH=%0d | V_MIN=%0d | Refrac=%0d ticks", 
                  V_TH, V_MIN, REFRAC_TICKS);
         $display("============================================================================");
 
         // ---------------------------------------------------------------------
-        // FASE 0: Reset Asíncrono y Verificación de Reposo Inicial
+        // PHASE 0: Asynchronous Reset and Initial Rest State
         // ---------------------------------------------------------------------
-        $display("[FASE 0] Verificando Reset y Estado Inicial...");
+        $display("[PHASE 0] Verifying Reset and Initial Rest State...");
         repeat (10) @(posedge clk);
         rst_n = 1'b1;
         @(posedge clk);
 
         if (v_mem !== 16'sd0 || spike !== 1'b0) begin
-            $display("  [ERROR] Estado post-reset incorrecto: v_mem=%0d (esp: 0), spike=%b (esp: 0)", v_mem, spike);
+            $display("  [TB-ERROR] Incorrect post-reset state: v_mem=%0d (exp: 0), spike=%b (exp: 0)", v_mem, spike);
             errors = errors + 1;
         end else begin
-            $display("  [OK] Reset exitoso: v_mem = %0d, spike = %b", v_mem, spike);
+            $display("  [OK] Reset verified: v_mem = %0d, spike = %b", v_mem, spike);
         end
 
         // ---------------------------------------------------------------------
-        // FASE 1: Inyección Continua de Corriente Excitatoria (+68)
+        // PHASE 1: Sustained Excitatory Current Injection (+68)
         // ---------------------------------------------------------------------
-        $display("\n[FASE 1] Inyectando Corriente Excitatoria Sostenida (+68)...");
+        $display("\n[PHASE 1] Injecting Sustained Excitatory Current (+68)...");
         synaptic_in = 16'sd68;
 
         while (!spike_detected && tick_counter < 100) begin
-            send_bio_tick(10); // Pulso bio_tick seguido de 10 ciclos clk
+            send_bio_tick(10);
             if (!spike_detected && (tick_counter % 5 == 0)) begin
                 $display("      Tick #%02d | synaptic_in = %+4d | v_mem = %4d | spike = %b", 
                          tick_counter, synaptic_in, v_mem, spike);
@@ -137,38 +136,38 @@ module tb_lif_neuron;
         end
 
         if (!spike_detected) begin
-            $display("  [ERROR] La neurona no disparó spike tras 100 ticks con synaptic_in=+68.");
+            $display("  [TB-ERROR] Neuron failed to fire spike after 100 ticks with synaptic_in=+68.");
             errors = errors + 1;
         end else begin
-            $display("  [OK] Disparo exitoso en Tick #%0d. Verificando periodo refractario...", spike_occurred_tick);
+            $display("  [OK] Action potential fired at Tick #%0d. Verifying refractory lockout...", spike_occurred_tick);
         end
 
         // ---------------------------------------------------------------------
-        // FASE 2: Verificación del Periodo Refractario (16 ticks forzados a 0)
+        // PHASE 2: Absolute Refractory Period Verification (16 ticks clamped at 0)
         // ---------------------------------------------------------------------
-        $display("\n[FASE 2] Verificando Periodo Refractario (16 ticks bloqueados en v_mem = 0)...");
-        // Mantenemos la excitación activa (+68); la neurona DEBE ignorarla durante refractario
+        $display("\n[PHASE 2] Verifying Absolute Refractory Period (16 ticks locked at v_mem = 0)...");
+        // Keep excitation active (+68); the neuron MUST strictly ignore it during refractory lockout
         begin : check_refractory
             integer r_i;
             for (r_i = 1; r_i <= REFRAC_TICKS; r_i = r_i + 1) begin
                 send_bio_tick(10);
                 if (v_mem !== 16'sd0) begin
-                    $display("  [ERROR] Falla en refractario tick #%0d (+%0d del spike): v_mem=%0d (debe ser 0)", 
+                    $display("  [TB-ERROR] Refractory violation at tick #%0d (+%0d from spike): v_mem=%0d (must be 0)", 
                              tick_counter, r_i, v_mem);
                     errors = errors + 1;
                 end
                 if (spike !== 1'b0) begin
-                    $display("  [ERROR] Spike espurio durante refractario en tick #%0d", tick_counter);
+                    $display("  [TB-ERROR] Spurious spike during refractory lockout at tick #%0d", tick_counter);
                     errors = errors + 1;
                 end
             end
-            $display("  [OK] Periodo refractario completado estrictamente en v_mem = 0.");
+            $display("  [OK] Refractory period completed strictly clamped at v_mem = 0.");
         end
 
         // ---------------------------------------------------------------------
-        // FASE 3: Transición a Reposo y Prueba de Integración Post-Refractario
+        // PHASE 3: Integration Resumption Post-Refractory Lockout
         // ---------------------------------------------------------------------
-        $display("\n[FASE 3] Reanudando Integración tras Periodo Refractario (3 ticks)...");
+        $display("\n[PHASE 3] Resuming Integration Post-Refractory Lockout (3 ticks)...");
         repeat (3) begin
             send_bio_tick(10);
             $display("      Tick #%02d | synaptic_in = %+4d | v_mem = %4d | spike = %b", 
@@ -176,19 +175,18 @@ module tb_lif_neuron;
         end
 
         if (v_mem <= 16'sd0) begin
-            $display("  [ERROR] La neurona no reanudó la integración tras el refractario.");
+            $display("  [TB-ERROR] Neuron failed to resume integration after refractory period.");
             errors = errors + 1;
         end else begin
-            $display("  [OK] Integración reanudada exitosamente: v_mem = %0d.", v_mem);
+            $display("  [OK] Integration resumed successfully: v_mem = %0d.", v_mem);
         end
 
         // ---------------------------------------------------------------------
-        // FASE 4: Inyección de Corriente Inhibitoria (-65) e Hiperpolarización
+        // PHASE 4: Inhibitory Current Injection (-65) and Hyperpolarization
         // ---------------------------------------------------------------------
-        $display("\n[FASE 4] Inyectando Corriente Inhibitoria (-65) hacia Hiperpolarización (-250)...");
+        $display("\n[PHASE 4] Injecting Inhibitory Current (-65) towards Hyperpolarization Floor (-250)...");
         synaptic_in = -16'sd65;
 
-        // Inyectamos 20 ticks inhibitorios para asegurar llegada al piso V_MIN (-250)
         repeat (20) begin
             send_bio_tick(10);
             if (tick_counter % 4 == 0) begin
@@ -197,18 +195,18 @@ module tb_lif_neuron;
             end
         end
 
-        // Comprobar saturación en V_MIN (-250)
+        // Check saturation at V_MIN (-250)
         if (v_mem !== V_MIN) begin
-            $display("  [ERROR] Hiperpolarización no saturó en V_MIN (%0d): v_mem = %0d", V_MIN, v_mem);
+            $display("  [TB-ERROR] Hyperpolarization failed to clamp at V_MIN (%0d): v_mem = %0d", V_MIN, v_mem);
             errors = errors + 1;
         end else begin
-            $display("  [OK] Hiperpolarización verificada: v_mem saturó exactamente en %0d.", v_mem);
+            $display("  [OK] Hyperpolarization verified: v_mem clamped exactly at %0d.", v_mem);
         end
 
         // ---------------------------------------------------------------------
-        // FASE 5: Fuga Natural Simétrica desde Hiperpolarización hacia Reposo (0)
+        // PHASE 5: Symmetric Natural Leak from Hyperpolarization to Rest (0)
         // ---------------------------------------------------------------------
-        $display("\n[FASE 5] Retirando Estímulo (synaptic_in = 0). Verificando fuga natural hacia 0...");
+        $display("\n[PHASE 5] Removing Stimulus (synaptic_in = 0). Verifying natural leak towards 0...");
         synaptic_in = 16'sd0;
 
         repeat (55) begin
@@ -220,22 +218,23 @@ module tb_lif_neuron;
         end
 
         if (v_mem !== 16'sd0) begin
-            $display("  [ERROR] Fuga simétrica no estabilizó en 0: v_mem = %0d", v_mem);
+            $display("  [TB-ERROR] Symmetric leak failed to stabilize at 0: v_mem = %0d", v_mem);
             errors = errors + 1;
         end else begin
-            $display("  [OK] Potencial estabilizado completamente en reposo (v_mem = 0).");
+            $display("  [OK] Membrane potential fully stabilized at resting baseline (v_mem = 0).");
         end
 
         // ---------------------------------------------------------------------
-        // Resumen Final de la Simulación
+        // Final Simulation Summary
         // ---------------------------------------------------------------------
         $display("\n============================================================================");
         if (errors == 0) begin
-            $display("  >>> TESTBENCH PASSED: TODAS LAS PRUEBAS FUNCIONALES FUERON VALIDADAS <<<");
-            $display("  Archivo de ondas generado: tb_lif_neuron.vcd");
-            $display("  Total de ticks evaluados: %0d", tick_counter);
+            $display("  >>> TESTBENCH PASSED: All functional verification tests validated with 0 errors. <<<");
+            $display("  Waveform file generated: tb_lif_neuron.vcd");
+            $display("  Total biological ticks evaluated: %0d", tick_counter);
         end else begin
-            $display("  >>> TESTBENCH FAILED: Se detectaron %0d errores en la simulación <<<", errors);
+            $display("  >>> TESTBENCH FAILED: Detected %0d errors in simulation <<<", errors);
+            $fatal(1);
         end
         $display("============================================================================\n");
 

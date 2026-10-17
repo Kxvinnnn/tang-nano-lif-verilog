@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Presentación Neuromórfica - SNN en FPGA Tang Nano 9K</title>
+    <title>Neuromorphic Architecture - SNN on Tang Nano 9K FPGA</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; }
         .container { max-width: 900px; background: #1e293b; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
@@ -17,41 +17,43 @@
 </head>
 <body>
     <div class="container">
-        <h1>Arquitectura Neuromórfica Acelerada en FPGA</h1>
-        <h3 style="text-align: center; color: #94a3b8;">Red Neuronal Pulsante (SNN) sobre Sipeed Tang Nano 9K</h3>
+        <h1>Hardware-Accelerated Neuromorphic Architecture</h1>
+        <h3 style="text-align: center; color: #94a3b8;">Spiking Neural Network (SNN) on Sipeed Tang Nano 9K</h3>
         
-        <h2>1. Introducción y Propósito</h2>
-        <p>Este sistema implementa una red neuronal pulsante basada en el modelo biológico <strong>Leaky Integrate-and-Fire (LIF)</strong> optimizada para hardware embebido de bajo consumo en la FPGA Gowin GW1NR-9C.</p>
+        <h2>1. Overview & Purpose</h2>
+        <p>This system implements an event-driven Spiking Neural Network based on the biological <strong>Leaky Integrate-and-Fire (LIF)</strong> model, optimized for ultra-low-power embedded edge AI on the Gowin GW1NR-9C FPGA.</p>
 
-        <h2>2. Arquitectura del Sistema</h2>
+        <h2>2. System Architecture</h2>
         <div class="highlight">
-[Botones S1/S2] ---> [Sincronizador & Debounce] ---> [Direccionamiento BRAM]
-                                                            |
-[Reloj 27 MHz] ---> [Divisor Tick 1kHz] ---> [Neurona LIF] <---+
-                                                  |
-                                    +-------------+-------------+
-                                    |                           |
-                            [Salida LEDs 0..5]         [Transmisor UART 115200]
+[Buttons S1/S2] ---> [Synchronizer & Debounce] ---> [BSRAM Synaptic Addressing]
+                                                                  |
+[27 MHz Clock]  ---> [50 Hz Prescaler Tick]   ---> [LIF Neuron Core] <----+
+                                                          |
+                                            +-------------+-------------+
+                                            |                           |
+                                    [LEDs 0..5 Outputs]        [UART 115200 Transmitter]
         </div>
 
-        <h2>3. Estimación de Recursos (GW1NR-9C)</h2>
+        <h2>3. Silicon Resource Utilization (GW1NR-9C)</h2>
         <ul>
-            <li><strong>LUTs:</strong> ~240 / 8,640 (2.7% de utilización)</li>
-            <li><strong>Flip-Flops (FFs):</strong> ~185 / 6,480 (2.8% de utilización)</li>
-            <li><strong>Bloques BRAM (BSRAM):</strong> 1 Bloque 36Kb inferido para pesos sinápticos.</li>
-            <li><strong>Frecuencia Máxima ($F_{max}$):</strong> > 120 MHz (operando holgadamente a 27 MHz).</li>
+            <li><strong>Logic Cells (LUT4):</strong> 833 / 8,640 (9.64% utilization)</li>
+            <li><strong>Flip-Flops (FFs):</strong> 207 / 6,480 (3.19% utilization)</li>
+            <li><strong>Block RAM (BSRAM):</strong> 1 block (3.85% utilization for synaptic matrix)</li>
+            <li><strong>Maximum Clock Frequency (F_max):</strong> &gt; 100 MHz (operating comfortably at 27 MHz nominal)</li>
+            <li><strong>Arithmetic DSPs:</strong> 0 / 20 (Zero DSP multipliers utilized)</li>
         </ul>
 
-        <h2>4. Guía Rápida de Comandos</h2>
+        <h2>4. Quickstart Command Reference</h2>
         <div class="highlight">
-make data       # Genera pesos sinápticos hexadecimales
-make sim        # Ejecuta simulación exhaustiva y genera ondas VCD
-make synth-open # Realiza Síntesis (Yosys) y Place & Route (NextPNR)
-make prog-flash # Programa la Flash permanente de la Tang Nano 9K
+make data       # Generate hexadecimal synaptic weights
+make sim        # Run unit functional testbench (tb_lif_neuron)
+make sim-system # Run system integration testbench (tb_top_system)
+make synth-gowin # Synthesize and route with Gowin EDA CLI
+make prog-flash # Permanently flash the Tang Nano 9K internal embFlash
         </div>
 
         <div style="text-align: center;">
-            <a class="btn" href="#" onclick="alert('Sistema listo para la demostración del miércoles a las 4:00 PM.');">Ver Estado del Sistema</a>
+            <a class="btn" href="#" onclick="alert('Hardware validated in silicon with 100% bit-exact equivalence (R=1.0000).');">Inspect System Status</a>
         </div>
     </div>
 </body>

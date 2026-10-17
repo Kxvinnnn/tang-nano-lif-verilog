@@ -5,28 +5,28 @@ import sys
 import serial.tools.list_ports
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Telemetría Neuromórfica SNN UART")
-    parser.add_argument("--port", type=str, default=None, help="Puerto serie (ej. COM3 o /dev/ttyUSB0)")
-    parser.add_argument("--baudrate", type=int, default=115200, help="Baudrate (por defecto: 115200)")
+    parser = argparse.ArgumentParser(description="Neuromorphic SNN UART Telemetry Listener")
+    parser.add_argument("--port", type=str, default=None, help="Serial port (e.g., COM4 or /dev/ttyUSB0)")
+    parser.add_argument("--baudrate", type=int, default=115200, help="Baud rate (default: 115200)")
     return parser.parse_args()
 
 def select_port_interactive():
     ports = serial.tools.list_ports.comports()
     if not ports:
-        print("[WARN] No se detectaron puertos serie conectados.")
+        print("[WARN] No connected serial ports detected.")
         return None
-    print("[INFO] Puertos serie disponibles:")
+    print("[INFO] Available serial ports:")
     for idx, p in enumerate(ports):
         print(f"  [{idx}] {p.device} - {p.description}")
     
-    choice = input("Seleccione el índice del puerto a utilizar (o pulse Enter para simulador): ")
+    choice = input("Select port index (or press Enter for standalone simulator): ")
     if choice.strip() == "":
         return None
     try:
         idx = int(choice)
         return ports[idx].device
     except Exception:
-        print("[ERROR] Selección inválida.")
+        print("[ERROR] Invalid port selection.")
         return None
 
 def run_neuromorphic_demo():
@@ -37,24 +37,24 @@ def run_neuromorphic_demo():
     if port is None:
         port = select_port_interactive()
 
-    print(f"[INFO] Iniciando telemetría en puerto: {port} a {baudrate} baudios...")
+    print(f"[INFO] Initializing telemetry on port: {port} at {baudrate} baud...")
     
     ser = None
     if port:
         try:
             ser = serial.Serial(port, baudrate, timeout=0.1)
-            print(f"[INFO] Conexión establecida con éxito en {port}.")
+            print(f"[INFO] Connection successfully established on {port}.")
         except Exception as e:
-            print(f"[WARN] No se pudo abrir {port} ({e}). Activando modo simulador autónomo.")
+            print(f"[WARN] Failed to open {port} ({e}). Falling back to autonomous simulator mode.")
 
     if ser is None:
-        print("[SIMULADOR] Ejecutando simulación en vivo de neurona LIF...")
+        print("[SIMULATOR] Running live software simulation of LIF neuron...")
         for i in range(10):
             v_mem = min(1000, i * 120)
             spike = 1 if v_mem >= 1000 else 0
-            print(f"[SIMULADOR] V_mem: {v_mem} mV | Spike: {spike} | LEDs: {bin(v_mem >> 7)}")
+            print(f"[SIMULATOR] V_mem: {v_mem} mV | Spike: {spike} | LEDs: {bin(v_mem >> 7)}")
             time.sleep(0.4)
-        print("[PASSED] Demostración completada en modo simulador.")
+        print("[PASSED] Demonstration completed in simulator mode.")
         return
 
     while True:
@@ -67,7 +67,7 @@ def run_neuromorphic_demo():
                     flags = packet[2]
                     print(f"[UART DATA] V_mem: {v_mem} mV | Flags: {bin(flags)}")
         except KeyboardInterrupt:
-            print("[INFO] Telemetría detenida por el usuario.")
+            print("[INFO] Telemetry streaming halted by user.")
             break
     ser.close()
 

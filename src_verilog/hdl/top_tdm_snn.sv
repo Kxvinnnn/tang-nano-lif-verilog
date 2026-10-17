@@ -1,8 +1,8 @@
 // =============================================================================
 // top_tdm_snn.sv
-// Top-Level del Sistema Acelerador Neuromórfico TDM de 100 Neuronas
-// Integra: lif_tdm_core + tdp_bram_synapse + csr_bram_ctrl + aer_transmitter
-// Estándar: SystemVerilog IEEE 1800-2017
+// Top-Level 100-Neuron TDM Neuromorphic Accelerator System
+// Integrates: lif_tdm_core + tdp_bram_synapse + csr_bram_ctrl + aer_transmitter
+// Standard: SystemVerilog IEEE 1800-2017
 // =============================================================================
 
 `timescale 1ns / 1ps
@@ -10,15 +10,15 @@
 module top_tdm_snn #(
     parameter int NUM_NEURONS = 100
 )(
-    input  logic        clk,             // Reloj maestro del sistema (ej. 27 MHz o 100 MHz)
-    input  logic        rst_n,           // Reset físico activo en bajo
+    input  logic        clk,             // System master clock (e.g., 27 MHz or 100 MHz)
+    input  logic        rst_n,           // Physical active-low asynchronous reset
 
-    // Entrada de tick biológico externo (o generado internamente a 50 Hz)
+    // External biological tick input (or generated internally at 50 Hz)
     input  logic        bio_tick_in,
     input  logic        bio_tick_ext_sel,
 
     // -------------------------------------------------------------------------
-    // Bus Esclavo CSR (Configuración y Escritura de Pesos en Caliente)
+    // CSR Slave Bus (Runtime Configuration & Hot Weight Updates)
     // -------------------------------------------------------------------------
     input  logic [31:0] csr_addr,
     input  logic [31:0] csr_wdata,
@@ -28,20 +28,20 @@ module top_tdm_snn #(
     output logic        csr_ready,
 
     // -------------------------------------------------------------------------
-    // Bus Asíncrono AER de 16 bits (Emisión de Eventos de Disparo)
+    // 16-bit Asynchronous AER Bus (Spike Event Emission)
     // -------------------------------------------------------------------------
     output logic        aer_req,
     input  logic        aer_ack,
     output logic [15:0] aer_data,
 
-    // Indicadores de Estado y Monitoreo Físico
+    // Physical Monitoring & Status Indicators
     output logic        tdm_active_led,
     output logic        spike_activity_led,
     output logic [15:0] total_spikes_epoch
 );
 
     // -------------------------------------------------------------------------
-    // Prescaler Interno de 50 Hz (20.0 ms) a 27.0 MHz
+    // Internal 50 Hz (20.0 ms) Prescaler at 27.0 MHz
     // -------------------------------------------------------------------------
     logic [19:0] bio_cnt;
     logic        bio_tick_internal;
@@ -64,7 +64,7 @@ module top_tdm_snn #(
     wire bio_tick_effective = bio_tick_ext_sel ? bio_tick_in : bio_tick_internal;
 
     // -------------------------------------------------------------------------
-    // Contador de Épocas para Marca de Tiempo AER
+    // Epoch Counter for AER Timestamp Tagging
     // -------------------------------------------------------------------------
     logic [7:0] epoch_counter;
     always_ff @(posedge clk or negedge rst_n) begin
@@ -76,7 +76,7 @@ module top_tdm_snn #(
     end
 
     // -------------------------------------------------------------------------
-    // Interconexiones entre Módulos
+    // Inter-module Interconnect Signals
     // -------------------------------------------------------------------------
     logic        core_en;
     logic        core_soft_rst;
@@ -84,28 +84,28 @@ module top_tdm_snn #(
     logic [4:0]  cfg_refractory;
     logic        tdm_active;
 
-    // BRAM Puerto A (TDM Core)
+    // BRAM Port A (TDM Core)
     logic [13:0]        bram_a_addr;
     logic               bram_a_en;
     logic signed [15:0] bram_a_rdata;
 
-    // BRAM Puerto B (CSR Bus)
+    // BRAM Port B (CSR Bus)
     logic [13:0]        bram_b_addr;
     logic signed [15:0] bram_b_wdata;
     logic               bram_b_we;
     logic               bram_b_en;
     logic signed [15:0] bram_b_rdata;
 
-    // Interfaz Spike Core -> AER Transmitter
+    // Spike Core -> AER Transmitter Interface
     logic        core_spike_valid;
     logic [6:0]  core_spike_neuron_id;
     logic        aer_spike_ready;
 
-    // Reset compuesto
+    // Composite synchronous reset
     wire effective_rst_n = rst_n && (!core_soft_rst);
 
     // -------------------------------------------------------------------------
-    // Instanciación del Controlador CSR
+    // CSR Controller Instantiation
     // -------------------------------------------------------------------------
     csr_bram_ctrl u_csr_ctrl (
         .clk             (clk),
@@ -130,13 +130,13 @@ module top_tdm_snn #(
     );
 
     // -------------------------------------------------------------------------
-    // Instanciación de la True Dual-Port BRAM
+    // True Dual-Port BRAM Instantiation
     // -------------------------------------------------------------------------
     tdp_bram_synapse #(
         .ADDR_WIDTH (14),
         .DATA_WIDTH (16),
         .DEPTH      (1024),
-        .INIT_FILE  ("data/pesos_sinapticos.hex")
+        .INIT_FILE  ("data/synaptic_weights.hex")
     ) u_bram (
         .clk_a   (clk),
         .en_a    (bram_a_en),
@@ -151,7 +151,7 @@ module top_tdm_snn #(
     );
 
     // -------------------------------------------------------------------------
-    // Instanciación del Núcleo TDM LIF (100 Neuronas)
+    // LIF TDM Core Instantiation (100 Neurons)
     // -------------------------------------------------------------------------
     lif_tdm_core #(
         .N_NEURONS (NUM_NEURONS)
@@ -174,7 +174,7 @@ module top_tdm_snn #(
     );
 
     // -------------------------------------------------------------------------
-    // Instanciación del Transmisor AER de 16 bits
+    // 16-bit AER Transmitter Instantiation
     // -------------------------------------------------------------------------
     aer_transmitter #(
         .FIFO_DEPTH (32)
@@ -193,7 +193,7 @@ module top_tdm_snn #(
         .fifo_occupancy  ()
     );
 
-    // Asignación de LEDs de actividad
+    // Activity LED assignments
     assign tdm_active_led     = tdm_active;
     assign spike_activity_led = core_spike_valid;
 

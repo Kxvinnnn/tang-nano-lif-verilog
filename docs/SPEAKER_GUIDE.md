@@ -1,58 +1,58 @@
-# Guion de Ponencia e Instrucción Operativa: Acelerador SNN en FPGA
+# Speaker Presentation Guide & Operational Defense: FPGA SNN Accelerator
 
-## 1. El Gancho Científico (60 Segundos)
-*(Speaker sosteniendo la placa física Tang Nano 9K desconectada de su alimentación)*
+## 1. The Scientific Hook (60 Seconds)
+*(Speaker holding the physical Tang Nano 9K development board disconnected from power)*
 
-"El despliegue de la Inteligencia Artificial profunda actual requiere de presupuestos termodinámicos masivos. El responsable directo de esta ineficiencia es el cuello de botella de Von Neumann: transferir un tensor de datos desde la memoria DRAM externa hacia las unidades aritmético-lógicas (ALUs) de una GPU consume hasta 100 veces más energía física que la operación matemática en sí. La alternativa biológica abandona por completo este paradigma. 
+"Deploying contemporary deep artificial neural networks demands colossal thermodynamic budgets. The primary culprit behind this inefficiency is the physical Von Neumann bottleneck: shuttling weight tensors from external DRAM across high-capacitance PCB buses into GPU arithmetic logic units (ALUs) consumes up to 100 times more physical energy than the arithmetic operation itself. The biological architecture completely abandons this paradigm.
 
-Lo que presento aquí es un procesador neuromórfico en silicio que no compila código secuencial, no ejecuta hilos de software y carece deliberadamente de unidades de punto flotante (FPU) o multiplicadores DSP. Disuelve la barrera física entre memoria y cálculo ejecutando una ecuación diferencial discreta de neurociencia embebida directamente en su topología de compuertas lógicas, procesando información dirigida por eventos con máxima eficiencia de área."
-
----
-
-## 2. Explicación de la "Caja Negra" (3 a 5 Minutos)
-*(Proyectar exclusivamente el diagrama de flujo y arquitectura interna RTL. Tratar los LEDs y gráficas como meros actuadores esclavos)*
-
-"El núcleo computacional no opera mediante instrucciones secuenciales de CPU; está gobernado por una máquina de estados determinista gobernada por dos dominios temporales estrictamente sincronizados:
-
-*   **Desacoplamiento Temporal (27 MHz vs 50 Hz):** El silicio corre sobre un oscilador maestro síncrono de 27.0 MHz ($T = 37.037\text{ ns}$). En lugar de conmutar dominios asíncronos (CDC), un prescaler digital genera pulsos de habilitación síncrona `bio_tick` de exactamente 1 ciclo de reloj cada 540,000 ciclos ($50\text{ Hz} \equiv \Delta t = 20.0\text{ ms}$). Esto emula con precisión determinista el paso temporal biológico sin alterar la estabilidad del transceptor UART ni generar *clock jitter*.
-*   **Fuga Asintótica sin Bloques DSP (Truncamiento Algorítmico):** La dinámica diferencial del modelo LIF continuo exige decaimiento exponencial $\tau \frac{dV}{dt} = -(V - V_{rest})$. Para evitar el consumo crítico de multiplicadores DSP o FPUs, se discretiza mediante un desplazamiento aritmético a la derecha con signo: `v_mem >>> 4`. En cada tick biológico, la neurona pierde el $6.25\%$ de su carga relativa en un único ciclo de reloj de 37 nanosegundos.
-*   **Integridad Aritmética y Clamping Hardware:** Para eliminar el riesgo de desbordamiento circular (*wrap-around*, donde $+32,767 + 1$ colapsaría catastróficamente a $-32,768$), la ALU utiliza un acumulador extendido de 18 bits con signo (`v_sum`). Mediante multiplexores de saturación simétrica, el potencial queda estrictamente acotado entre un techo de $+32,767$ (tolerancia a ráfagas supraluminales) y un piso rígido de hiperpolarización en $V_{MIN} = -250_{hw}$ ($-75.0\text{ mV}$).
-*   **Resolución LSB Inmutable:** El estado de reposo ($0_{hw}$) corresponde a $-70.0\text{ mV}$ y el umbral de disparo ($1000_{hw}$) a $-50.0\text{ mV}$, garantizando una cuantización exacta de $20.0\text{ }\mu\text{V/LSB}$ en aritmética de 16 bits con signo."
+What I hold in my hand is a neuromorphic processor implemented in physical silicon that compiles no sequential software instructions, spawns zero operating system threads, and deliberately excludes floating-point units (FPUs) and dedicated DSP multipliers. It dissolves the physical boundary between memory and compute by executing a discretized neuroscience differential equation embedded directly within its logic gate topology, computing strictly event-driven information at maximum silicon area efficiency."
 
 ---
 
-## 3. Protocolo de Demostración en Vivo
-1.  **Arranque en Frío:** Conectar la Tang Nano 9K al bus USB del host. La FPGA carga inmediatamente el bitstream desde la memoria *embFlash* no volátil sin secuencias de bootloader de software.
-2.  **Lanzamiento del Receptor Multihilo:** Ejecutar en el host:
+## 2. Unpacking the "Black Box" (3 to 5 Minutes)
+*(Project exclusively the internal RTL datapath blueprint and architecture diagram. Treat onboard LEDs and host graphs strictly as secondary observability taps)*
+
+"The compute engine does not execute sequential instructions from program memory; it is governed by a deterministic finite state machine (FSM) operating across two strictly synchronized temporal domains:
+
+*   **Temporal Decoupling (27.0 MHz Master Clock vs 50.0 Hz Biological Epoch):** The silicon runs synchronously on a 27.0 MHz crystal oscillator ($T_{clk} = 37.037\text{ ns}$). Rather than introducing asynchronous Clock Domain Crossing (CDC) bridges, an integrated 20-bit prescaler generates synchronous single-cycle enable strobes (`bio_tick`) exactly every 540,000 clock cycles ($50\text{ Hz} \equiv \Delta t = 20.0\text{ ms}$). This deterministically models the biological membrane time scale without compromising UART baud rate stability or inducing clock jitter.
+*   **Zero-DSP Asymptotic Decay (Algorithmic Shift Truncation):** Continuous Leaky Integrate-and-Fire (LIF) dynamics govern passive exponential decay: $\tau_m \frac{dV}{dt} = -(V - V_{rest})$. To eliminate power-hungry DSP multipliers and FPUs, the equation is discretized using an arithmetic right shift: `v_mem >>> 4`. In every biological tick, the neuron passively dissipates exactly $6.25\%$ ($1/16$) of its accumulated charge within a single 37-nanosecond clock cycle.
+*   **Arithmetic Integrity & Symmetric Hardware Clamping:** To eliminate the catastrophic hazard of integer overflow wrap-around (where $+32,767 + 1$ would erroneously collapse to $-32,768$), the ALU incorporates an 18-bit signed extended accumulator (`v_sum`). Using symmetric saturation multiplexers, membrane potential is strictly clamped between an upper ceiling of $+32,767$ (suprathreshold burst resilience) and a rigid physiological hyperpolarization floor at $V_{MIN} = -250_{hw}$ ($-75.0\text{ mV}$).
+*   **Immutable Physical Quantization:** The resting baseline ($0_{hw}$) maps to $-70.0\text{ mV}$ and the action potential threshold ($1000_{hw}$) to $-50.0\text{ mV}$, guaranteeing a deterministic resolution of $20.0\text{ }\mu\text{V/LSB}$ in signed 16-bit two's-complement arithmetic."
+
+---
+
+## 3. Live Demonstration Protocol
+1.  **Cold Boot Verification:** Plug the Tang Nano 9K into the host USB-C port. The FPGA immediately configures its gate array directly from non-volatile on-chip *embFlash* memory without requiring bootloader handshakes or PC host software.
+2.  **Launch Multi-Threaded Host Receiver:** Run in the host terminal:
     ```bash
     python telemetry/telemetry_listener.py --port COM4 --baud 115200
     ```
-    *Nota de Blindaje:* El receptor inicializa un hilo dedicado en segundo plano (`daemon=True`) que drena continuamente el buffer FIFO serie del sistema operativo hacia una cola `queue.Queue`. Esto protege la integridad del enlace, garantizando cero pérdida de tramas y cero desbordamientos incluso si la ventana gráfica de Matplotlib experimenta latencias de renderizado.
-3.  **Inyección de Estímulo Físico (Causa):** Presionar de forma sostenida el botón excitatorio S1. Explicar el acondicionamiento físico: la señal atraviesa un sincronizador de 2 etapas (2-FF) y un filtro de antirrebote de 20 ms que rechaza el ruido metálico transitorio antes de inyectar los pesos leídos de la memoria BSRAM (`+68` por tick).
-4.  **Alineación Dinámica (Efecto):** Señalar en el osciloscopio en vivo la integración progresiva de membrana hasta alcanzar el umbral de disparo ($1000_{hw}$), el pulso de spike emitido en el séptimo byte, el bloqueo por periodo refractario de 16 ticks (320 ms) y la caída en hiperpolarización, demostrando la fidelidad de silicio bit a bit ($R=1.0000$).
+    *Engineering Fortification Note:* The host listener launches a dedicated background daemon thread (`daemon=True`) that continuously drains the operating system's serial FIFO buffer into a thread-safe `queue.Queue`. This guarantees zero dropped packets and zero buffer overruns even when Matplotlib GUI rendering experiences high system latencies.
+3.  **Physical Stimulus Injection (Cause):** Sustained press on tactile push-button S1. Explain physical signal conditioning: the mechanical signal passes through a 2-stage flip-flop synchronizer (2-FF) and a 20 ms debounce counter (540,000 cycles) to eliminate contact bounce noise before latching synaptic weights from on-chip BSRAM (`+68` per tick).
+4.  **Dynamic Alignment (Effect):** Point to the live oscilloscope GUI showing progressive membrane integration up to the threshold ($1000_{hw}$), the 1-bit action potential spike pulse emitted in byte 7 of the packet, the 16-tick (320 ms) refractory period clamping the potential at baseline, and the post-hyperpolarization curve, confirming bit-by-bit silicon fidelity ($R = 1.0000$, $\text{RMSE} = 0.0$).
 
 ---
 
-## 4. Q&A Defense (Preguntas Críticas de Ingeniería)
+## 4. Q&A Defense (Critical Engineering Questions)
 
-### P1: ¿Por qué ignorar las rutas en el archivo SDC con `set_false_path`?
-**Respuesta Técnica:**
-"Porque las líneas de entrada `btn1` y `btn2` provienen de pulsadores mecánicos que operan en un dominio temporal completamente asíncrono e independiente del reloj maestro de 27 MHz de la FPGA. En nuestro diseño RTL, estas señales no entran directamente a la lógica combinacional de la neurona, sino que son capturadas e inmunizadas mediante un sincronizador de doble etapa (2-FF Synchronizer) y un contador antirrebote de 540,000 ciclos (20 ms) implementados en `button_debouncer.v`. 
+### Q1: Why declare `set_false_path` on push-button inputs in the SDC constraints?
+**Technical Answer:**
+"Because input pins `btn1` and `btn2` originate from mechanical push-buttons operating in an asynchronous domain completely decoupled from the FPGA's 27.0 MHz master clock. In our RTL architecture, these external pins never feed directly into the neuron's combinational datapath; instead, they are captured and sanitized by a 2-stage flip-flop synchronizer (2-FF Synchronizer) and a 20 ms debounce counter implemented in `button_debouncer.v`.
 
-Declarar `set_false_path -from [get_ports {btn1 btn2}]` en las restricciones SDC es la práctica estándar en la industria de semiconductores: instruye formalmente al motor de Análisis de Temporizado Estático (STA) a no calcular falsas violaciones de *setup* y *hold* en pines asíncronos que ya están desacoplados contra metaestabilidad. Esto permite que los algoritmos de síntesis y Place & Route concentren sus iteraciones exclusivamente en cerrar el temporizado de la ruta crítica síncrona del núcleo aritmético de 27 MHz, donde alcanzamos un margen positivo (*slack*) superior a 27 nanosegundos."
+Declaring `set_false_path -from [get_ports {btn1 btn2}]` in SDC constraints is standard semiconductor industry practice: it formally instructs the Static Timing Analysis (STA) engine to ignore false setup and hold violations across asynchronous boundary pins that are already protected against metastability. This allows the synthesis and Place & Route engines to focus computational effort exclusively on meeting timing closure across the synchronous 27.0 MHz critical arithmetic path, where we achieve a positive setup slack exceeding +27 nanoseconds."
 
-### P2: ¿Por qué fallaría escalar a 100 neuronas hoy mismo en este diseño?
-**Respuesta Técnica:**
-"No fallaría por falta de memoria ni por capacidad de compuertas lógicas. Una red totalmente densa de 100 neuronas ($100 \times 100 = 10,000$ sinapsis) a 16 bits por peso requiere exactamente $160\text{ Kb}$ de almacenamiento. Dado que la Gowin GW1NR-9C integra 26 bloques BSRAM con $468\text{ Kb}$ totales, la matriz de pesos ocuparía apenas el $34.19\%$ de la memoria embebida, dejando más del $65\%$ de holgura.
+### Q2: Why would scaling to 100 neurons immediately fail in this specific design?
+**Technical Answer:**
+"It would not fail due to logic gate exhaustion or memory deficit. A fully connected 100-neuron recurrent network ($100 \times 100 = 10,000$ synapses) at 16 bits per weight requires exactly $160\text{ Kb}$ of storage. Given that the Gowin GW1NR-9C contains 26 embedded BSRAM blocks totaling $468\text{ Kb}$, the synaptic weight matrix occupies only $34.19\%$ of available on-chip memory, leaving more than $65\%$ margin.
 
-El colapso inmediato ocurriría por dos factores físicos concretos:
-1.  **Asfixia de Ancho de Banda en el Canal Serial:** Para transmitir la telemetría continua de voltaje analógico de 100 nodos a 50 Hz en tramas de 9 bytes (90 bits físicos en 8-N-1), se demandan $450,000\text{ bps}$. El enlace UART a 115,200 baudios sufre un déficit de $3.9\times$, provocando una pérdida masiva del $74.4\%$ de los paquetes de datos y destruyendo la observabilidad.
-2.  **Ausencia de un Bus de Registros CSR:** Los pesos sinápticos actuales están grabados estáticamente en la memoria durante la síntesis mediante `$readmemh`. Modificar la matriz sináptica requeriría resintetizar el bitstream completo para cada prueba.
+The immediate breakdown occurs due to two physical system constraints:
+1.  **Serial I/O Bandwidth Asphyxiation:** Continuously streaming 9-byte raw analog telemetry frames (90 physical bits in 8-N-1 framing) for 100 neurons at 50 Hz demands an aggregate bandwidth of $450,000\text{ bps}$. A 115,200 baud UART link suffers a $3.9\times$ deficit, inducing a catastrophic $74.4\%$ packet drop rate and destroying observability.
+2.  **Lack of Dynamic CSR Reconfiguration:** Synaptic weights in the baseline prototype are statically preloaded during FPGA configuration via `$readmemh`. Modifying network connectivity requires resynthesizing the entire bitstream.
 
-La solución del roadmap que tenemos definida resuelve ambos problemas: primero, sustituir el volcado continuo por el protocolo AER (Address Event Representation) donde solo se transmiten los spikes de nodos activos, reduciendo el tráfico disperso a menos de $10,000\text{ bps}$ ($8.68\%$ del canal); segundo, implementar un bus de control CSR sobre UART RX acoplado al segundo puerto de una BSRAM True Dual-Port, permitiendo la escritura de pesos en caliente durante la emulación activa."
+Our documented architectural roadmap resolves both limitations: first, replacing continuous analog broadcasting with the Address Event Representation (AER) protocol where only active firing neurons emit 2-byte event packets, reducing sparse channel traffic below $10,000\text{ bps}$ ($8.68\%$ channel utilization); second, deploying a 32-bit CSR slave bus over UART RX coupled to Port B of True Dual-Port BSRAM, allowing hot runtime weight updates without taking down the emulation."
 
-### P3: ¿Cómo se garantiza la estabilidad y determinismo de la recepción serial a altas tasas?
-**Respuesta Técnica:**
-"Se garantiza mediante dos mecanismos complementarios a nivel de protocolo y de arquitectura de software:
-1.  **Validación de Redundancia XOR en Hardware:** El transceptor UART de la FPGA empaqueta el estado en una trama rígida de 9 bytes delimitada por `0xAA 0x55` en la cabecera y `0x0A` en la cola. El octavo byte es calculado dinámicamente en el hardware como el XOR exclusivo de los 5 bytes de datos útiles (`V_H ^ V_L ^ I_H ^ I_L ^ Spike`). Si ocurre cualquier alteración de bit por ruido de línea o desalineación de reloj, el decodificador descarta la trama de forma atómica sin corromper el histórico de datos.
-2.  **Arquitectura Multihilo Productor-Consumidor (Decoupled Threading):** En el host, se implementa un hilo dedicado en segundo plano (`threading.Thread(daemon=True)`) que actúa como Productor. Este hilo lee y drena continuamente el buffer FIFO serie del sistema operativo a máxima prioridad y encola las muestras validadas en una cola thread-safe (`queue.Queue`). El hilo principal de Matplotlib actúa como Consumidor, extrayendo las muestras acumuladas mediante `get_nowait()` en cada refresco de pantalla. Este desacoplamiento asegura que los bloqueos de renderizado de la GPU o pausas en el sistema de ventanas del host nunca provoquen un desbordamiento del buffer serie (*buffer overrun*) ni congelamiento del flujo de telemetría."
+### Q3: How is serial telemetry transmission guaranteed to remain stable and deterministic at high data rates?
+**Technical Answer:**
+"Stability is guaranteed through two complementary mechanisms spanning hardware protocol framing and software threading architecture:
+1.  **Hardware-Computed XOR Frame Parity:** The FPGA UART transceiver encapsulates neuronal state into a rigid 9-byte packet delimited by `0xAA 0x55` header preambles and an `0x0A` (`\n`) newline trailer. Byte 8 is dynamically computed in hardware as the bitwise XOR checksum of all 5 payload bytes (`V_H ^ V_L ^ I_H ^ I_L ^ Spike`). If electrical line noise or clock drift corrupts any bit in transit, the host parser drops the frame atomically without contaminating state history.
+2.  **Decoupled Producer-Consumer Multithreading:** On the host, a dedicated background thread (`threading.Thread(daemon=True)`) acts as Producer, continuously draining the operating system's serial FIFO buffer at highest priority and enqueuing validated packets into a thread-safe `queue.Queue`. The Matplotlib GUI runs as Consumer on the main thread, non-blockingly draining accumulated samples via `get_nowait()` on every screen refresh. This strict decoupling ensures that OS window resizing or GPU rendering pauses never trigger serial buffer overruns or freeze the real-time telemetry stream."

@@ -1,7 +1,7 @@
 # =============================================================================
 # test_lif_network.py
-# Entorno de Verificación Digital en Python con Cocotb para Acelerador LIF TDM
-# Metodología: Constrained Random Verification (CRV) + Scoreboard + Golden Model
+# Python Digital Verification Environment using Cocotb for TDM LIF Accelerator
+# Methodology: Constrained Random Verification (CRV) + Scoreboard + Golden Model
 # =============================================================================
 
 import random
@@ -10,7 +10,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles, Timer
 from cocotb.result import TestFailure
 
-# Constantes biológicas y límites del hardware
+# Biological constants and hardware limits
 V_REST = 0
 V_TH_DEFAULT = 1000
 V_MIN = -250
@@ -18,7 +18,7 @@ V_MAX = 32767
 REFRACTORY_DEFAULT = 16
 NUM_NEURONS = 100
 
-# Mapa de memoria CSR
+# CSR Memory Map
 CSR_ADDR_CTRL    = 0x00000000
 CSR_ADDR_STATUS  = 0x00000004
 CSR_ADDR_CFG_TH  = 0x00000008
@@ -27,13 +27,13 @@ CSR_BRAM_BASE    = 0x00001000
 
 
 class CSRDriver:
-    """Driver transaccional para el bus esclavo CSR de 32 bits."""
+    """Transactional driver for the 32-bit CSR slave bus."""
     def __init__(self, dut, clk):
         self.dut = dut
         self.clk = clk
 
     async def write(self, addr: int, data: int):
-        """Ejecuta una transacción de escritura CSR con handshake."""
+        """Executes a CSR write transaction with handshake."""
         await RisingEdge(self.clk)
         self.dut.csr_addr.value = addr
         self.dut.csr_wdata.value = data
@@ -51,7 +51,7 @@ class CSRDriver:
         self.dut.csr_wdata.value = 0
 
     async def read(self, addr: int) -> int:
-        """Ejecuta una transacción de lectura CSR con handshake."""
+        """Executes a CSR read transaction with handshake."""
         await RisingEdge(self.clk)
         self.dut.csr_addr.value = addr
         self.dut.csr_write.value = 0
@@ -69,7 +69,7 @@ class CSRDriver:
 
 
 class AERMonitor:
-    """Monitor y receptor activo del protocolo AER de 4 fases (req/ack)."""
+    """Active monitor and receiver for 4-phase AER protocol (req/ack)."""
     def __init__(self, dut, clk):
         self.dut = dut
         self.clk = clk
@@ -77,7 +77,7 @@ class AERMonitor:
         self._running = True
 
     async def run(self):
-        """Loop continuo de escucha de eventos de disparo AER."""
+        """Continuous listening loop for AER spike events."""
         self.dut.aer_ack.value = 0
         while self._running:
             await RisingEdge(self.clk)
@@ -95,12 +95,12 @@ class AERMonitor:
                         "sim_time_ns": cocotb.utils.get_sim_time(units='ns')
                     })
 
-                # Fase 2 del Handshake: Afirmar ack con retardo aleatorio (emular receptor externo)
+                # Handshake Phase 2: Assert ack with randomized delay (emulate external receiver)
                 ack_delay = random.randint(1, 4)
                 await ClockCycles(self.clk, ack_delay)
                 self.dut.aer_ack.value = 1
 
-                # Fase 4 del Handshake: Esperar que req caiga, luego bajar ack
+                # Handshake Phase 4: Wait for req to deassert, then lower ack
                 while self.dut.aer_req.value == 1:
                     await RisingEdge(self.clk)
 
@@ -113,7 +113,7 @@ class AERMonitor:
 
 
 class LIFGoldenModel:
-    """Modelo matemático analítico de referencia (Verdad Base en Python)."""
+    """Analytical mathematical reference model (Ground Truth in Python)."""
     def __init__(self, num_neurons=NUM_NEURONS):
         self.num_neurons = num_neurons
         self.v_mem = [V_REST] * num_neurons
@@ -132,7 +132,7 @@ class LIFGoldenModel:
         self.weights[neuron_id] = max(-32768, min(32767, int(weight)))
 
     def step_epoch(self) -> list:
-        """Simula una época biológica completa (50 Hz) para las 100 neuronas."""
+        """Simulates a complete biological epoch (50 Hz) for all 100 neurons."""
         spikes = []
         for i in range(self.num_neurons):
             if self.refractory[i] > 0:
@@ -161,7 +161,7 @@ class LIFGoldenModel:
 
 
 class Scoreboard:
-    """Scoreboard para verificación determinista de eventos de hardware vs modelo."""
+    """Scoreboard for deterministic verification of hardware events vs model."""
     def __init__(self):
         self.expected_events = []
         self.matched_events = 0
@@ -173,7 +173,7 @@ class Scoreboard:
 
     def evaluate(self, actual_events: list):
         dut_spikes = [{"epoch": e["timestamp"], "neuron_id": e["neuron_id"]} for e in actual_events]
-        print(f"[SCOREBOARD] Eventos esperados: {len(self.expected_events)} | Capturados en AER: {len(dut_spikes)}")
+        print(f"[SCOREBOARD] Expected events: {len(self.expected_events)} | Captured via AER: {len(dut_spikes)}")
 
         expected_ids = sorted([e["neuron_id"] for e in self.expected_events])
         actual_ids = sorted([e["neuron_id"] for e in dut_spikes])
@@ -182,26 +182,26 @@ class Scoreboard:
             missing = set(expected_ids) - set(actual_ids)
             unexpected = set(actual_ids) - set(expected_ids)
             raise TestFailure(
-                f"[FALLO SCOREBOARD] Discrepancia en spikes detectados.\n"
-                f"Faltantes en hardware: {missing}\n"
-                f"Inesperados (espurios): {unexpected}"
+                f"[SCOREBOARD FAILURE] Discrepancy in detected spikes.\n"
+                f"Missing in hardware: {missing}\n"
+                f"Unexpected (spurious): {unexpected}"
             )
         else:
-            print(f"[SCOREBOARD PASS] Correlacion 100% exacta ({len(actual_ids)} spikes verificados bit a bit).")
+            print(f"[SCOREBOARD PASS] 100% exact correlation ({len(actual_ids)} spikes verified bit-by-bit).")
 
 
 # =============================================================================
-# SUITE DE PRUEBAS COCOTB (CONSTRAINED RANDOM VERIFICATION)
+# COCOTB TEST SUITE (CONSTRAINED RANDOM VERIFICATION)
 # =============================================================================
 
 async def setup_dut(dut):
-    """Inicialización síncrona del reloj y reset físico del DUT."""
+    """Synchronous initialization of clock and physical reset of DUT."""
     clock = Clock(dut.clk, 10, units="ns")  # 100 MHz clock
     cocotb.start_soon(clock.start())
 
     dut.rst_n.value = 0
     dut.bio_tick_in.value = 0
-    dut.bio_tick_ext_sel.value = 1  # Control directo de bio_tick desde el testbench
+    dut.bio_tick_ext_sel.value = 1  # Direct bio_tick control from testbench
     dut.csr_valid.value = 0
     dut.csr_write.value = 0
     dut.csr_addr.value = 0
@@ -215,11 +215,11 @@ async def setup_dut(dut):
 
 @cocotb.test()
 async def test_csr_configuration_and_registers(dut):
-    """Test 1: Verificación de acceso y persistencia en registros CSR."""
+    """Test 1: Verification of access and persistence in CSR registers."""
     await setup_dut(dut)
     driver = CSRDriver(dut, dut.clk)
 
-    dut._log.info("[TEST 1] Verificando escritura y lectura en registros de control...")
+    dut._log.info("[TEST 1] Verifying write and read in control registers...")
 
     await driver.write(CSR_ADDR_CFG_TH, 1200)
     await driver.write(CSR_ADDR_CFG_REF, 20)
@@ -227,15 +227,15 @@ async def test_csr_configuration_and_registers(dut):
     th_read = await driver.read(CSR_ADDR_CFG_TH)
     ref_read = await driver.read(CSR_ADDR_CFG_REF)
 
-    assert th_read == 1200, f"Error en lectura de V_TH: {th_read} != 1200"
-    assert ref_read == 20, f"Error en lectura de Refractory: {ref_read} != 20"
+    assert th_read == 1200, f"Error in V_TH read: {th_read} != 1200"
+    assert ref_read == 20, f"Error in Refractory read: {ref_read} != 20"
 
-    dut._log.info("[TEST 1 PASSED] Registros CSR verificados correctamente.")
+    dut._log.info("[TEST 1 PASSED] CSR registers verified successfully.")
 
 
 @cocotb.test()
 async def test_synaptic_weights_injection_and_tdm_spikes(dut):
-    """Test 2: Inyección dinámica de pesos vía CSR y verificación AER con Scoreboard."""
+    """Test 2: Dynamic weight injection via CSR and AER verification with Scoreboard."""
     await setup_dut(dut)
     driver = CSRDriver(dut, dut.clk)
     monitor = AERMonitor(dut, dut.clk)
@@ -244,16 +244,16 @@ async def test_synaptic_weights_injection_and_tdm_spikes(dut):
     golden = LIFGoldenModel(NUM_NEURONS)
     scoreboard = Scoreboard()
 
-    dut._log.info("[TEST 2] Inyectando matriz de pesos sinápticos aleatorios en BRAM...")
+    dut._log.info("[TEST 2] Injecting random synaptic weight matrix into BRAM...")
 
     random.seed(42)
     for i in range(NUM_NEURONS):
         if i < 20:
             weight = random.randint(800, 1500)  # Suprathreshold
         elif i < 50:
-            weight = random.randint(50, 200)    # Subthreshold integrativo
+            weight = random.randint(50, 200)    # Integrative subthreshold
         else:
-            weight = random.randint(-300, 0)    # Inhibición
+            weight = random.randint(-300, 0)    # Inhibition
 
         golden.set_weight(i, weight)
 
@@ -261,7 +261,7 @@ async def test_synaptic_weights_injection_and_tdm_spikes(dut):
         weight_u16 = weight & 0xFFFF
         await driver.write(bram_csr_addr, weight_u16)
 
-    dut._log.info("[TEST 2] Ejecutando 5 épocas biológicas con monitoreo AER...")
+    dut._log.info("[TEST 2] Executing 5 biological epochs with AER monitoring...")
 
     for epoch in range(5):
         dut.bio_tick_in.value = 1
@@ -277,4 +277,4 @@ async def test_synaptic_weights_injection_and_tdm_spikes(dut):
     monitor.stop()
 
     scoreboard.evaluate(monitor.captured_events)
-    dut._log.info("[TEST 2 PASSED] Verificación Constrained Random completada con 100% de éxito.")
+    dut._log.info("[TEST 2 PASSED] Constrained Random verification completed with 100% success.")

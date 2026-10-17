@@ -1,8 +1,8 @@
 // =============================================================================
 // aer_transmitter.sv
-// Transmisor del Protocolo AER (Address Event Representation) de 16 bits
-// Arquitectura: Cola elástica FIFO + Handshake Req/Ack de 4 fases + Árbitro Round-Robin
-// Estándar: SystemVerilog IEEE 1800-2017
+// 16-bit Address Event Representation (AER) Protocol Transmitter
+// Architecture: Elastic FIFO Buffer + 4-Phase Req/Ack Handshake + Round-Robin Arbiter
+// Standard: SystemVerilog IEEE 1800-2017
 // =============================================================================
 
 `timescale 1ns / 1ps
@@ -10,34 +10,34 @@
 module aer_transmitter #(
     parameter int FIFO_DEPTH = 32
 )(
-    input  logic        clk,             // Reloj del sistema
-    input  logic        rst_n,           // Reset activo en bajo
+    input  logic        clk,             // System clock
+    input  logic        rst_n,           // Active-low asynchronous reset
 
     // -------------------------------------------------------------------------
-    // Interfaz de Entrada desde el Núcleo LIF / TDM
+    // Input Interface from LIF / TDM Neuromorphic Core
     // -------------------------------------------------------------------------
-    input  logic        spike_valid,     // Pulso de spike generado
-    input  logic [6:0]  spike_neuron_id, // ID de la neurona que disparó (0 a 99)
-    output logic        spike_ready,     // Listo para recibir nuevo spike
+    input  logic        spike_valid,     // Spike strobe pulse
+    input  logic [6:0]  spike_neuron_id, // Discharging neuron ID (0 to 99)
+    output logic        spike_ready,     // Ready to ingest next spike
 
-    // Contador de época / timestamp global para el evento
+    // Global epoch timestamp counter for event tagging
     input  logic [7:0]  epoch_timestamp,
 
     // -------------------------------------------------------------------------
-    // Bus Físico AER (Handshake de 4 Fases con Receptor Externo)
+    // Physical AER Bus (4-Phase Handshake with External Receiver)
     // -------------------------------------------------------------------------
-    output logic        aer_req,         // Petición asíncrona de transmisión
-    input  logic        aer_ack,         // Acknowledge del receptor externo
-    output logic [15:0] aer_data,        // Trama: [15]=1, [14:7]=Timestamp, [6:0]=ID
+    output logic        aer_req,         // Asynchronous transmission request
+    input  logic        aer_ack,         // Acknowledge from external receiver
+    output logic [15:0] aer_data,        // Frame: [15]=1, [14:7]=Timestamp, [6:0]=ID
 
-    // Monitoreo
+    // Monitoring & Status
     output logic        fifo_full,
     output logic        fifo_empty,
     output logic [5:0]  fifo_occupancy
 );
 
     // -------------------------------------------------------------------------
-    // Buffer Elástico FIFO Interno (Aislamiento de latencia del Handshake)
+    // Internal Elastic FIFO Buffer (Handshake Latency Isolation)
     // -------------------------------------------------------------------------
     logic [15:0] fifo_mem [0:FIFO_DEPTH-1];
     logic [4:0]  wr_ptr_q, rd_ptr_q;
@@ -50,7 +50,7 @@ module aer_transmitter #(
 
     wire [15:0] new_spike_packet = {1'b1, epoch_timestamp, 1'b0, spike_neuron_id};
 
-    // Escritura en FIFO
+    // FIFO Write Logic
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             wr_ptr_q <= 5'd0;
@@ -61,7 +61,7 @@ module aer_transmitter #(
     end
 
     // -------------------------------------------------------------------------
-    // FSM de Handshake AER (Secuencia estricta de 4 fases)
+    // AER Handshake FSM (Strict 4-Phase Sequence)
     // -------------------------------------------------------------------------
     typedef enum logic [1:0] {
         AER_IDLE     = 2'b00,
@@ -136,21 +136,21 @@ module aer_transmitter #(
         (aer_req && !aer_ack) |=> $stable(aer_data);
     endproperty
     assert_aer_data_stability: assert property (p_aer_data_stability)
-        else $error("[SVA ERROR] Violación de protocolo AER: aer_data mutó antes de recibir aer_ack");
+        else $error("[SVA ERROR] AER protocol violation: aer_data mutated before receiving aer_ack");
 
     property p_aer_req_hold_until_ack;
         @(posedge clk) disable iff (!rst_n)
         $fell(aer_req) |-> $past(aer_ack);
     endproperty
     assert_aer_req_hold_until_ack: assert property (p_aer_req_hold_until_ack)
-        else $error("[SVA ERROR] Violación de protocolo AER: aer_req cayó prematuramente sin recibir aer_ack");
+        else $error("[SVA ERROR] AER protocol violation: aer_req dropped prematurely without aer_ack");
 
     property p_aer_deadlock_watchdog;
         @(posedge clk) disable iff (!rst_n)
         aer_req |-> ##[1:500] aer_ack;
     endproperty
     assert_aer_deadlock_watchdog: assert property (p_aer_deadlock_watchdog)
-        else $error("[SVA DEADLOCK] El bus AER quedó interbloqueado: aer_req activo > 500 ciclos sin respuesta de aer_ack");
+        else $error("[SVA DEADLOCK] AER bus deadlocked: aer_req asserted > 500 cycles without aer_ack response");
 
     // synthesis translate_on
 

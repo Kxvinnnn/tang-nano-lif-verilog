@@ -1,15 +1,17 @@
 `timescale 1ns / 1ps
 // =============================================================================
-// bram_synapse_matrix.v - Matriz BRAM de Pesos Sinápticos (GW1NR-9C)
-// Características: Salida registrada protegida contra direcciones fuera de rango,
-//                  reset síncrono para anular estados flotantes ('x'/'z').
+// bram_synapse_matrix.v - Block RAM Synaptic Weight Matrix (Gowin GW1NR-9C)
+// Architecture Features:
+//   - Synthesized into dedicated embedded BSRAM via (* ram_style = "block" *)
+//   - Synchronously registered output with out-of-range bounds protection
+//   - Zero-unknown ('X'/'Z') guarantee under reset and unmapped addresses
 // =============================================================================
 
 module bram_synapse_matrix #(
     parameter ADDR_WIDTH = 4,
     parameter DATA_WIDTH = 16,
     parameter MEM_SIZE   = 8,
-    parameter HEX_FILE   = "data/pesos_sinapticos.hex"
+    parameter HEX_FILE   = "data/synaptic_weights.hex"
 )(
     input  wire                          clk,
     input  wire                          rst_n,
@@ -19,16 +21,17 @@ module bram_synapse_matrix #(
     output reg  signed [DATA_WIDTH-1:0]  dout
 );
 
+    // Force synthesis into dedicated Gowin BSRAM blocks rather than distributed LUTs
     (* ram_style = "block" *) reg signed [DATA_WIDTH-1:0] ram [0:MEM_SIZE-1];
 
-    // Carga de coeficientes estáticos en fase de configuración de la FPGA
+    // Static coefficient preload during FPGA configuration phase
     initial begin
         if (HEX_FILE != "") begin
             $readmemh(HEX_FILE, ram);
         end
     end
 
-    // Acceso síncrono con tolerancia cero a direcciones fuera de rango
+    // Synchronous memory access with zero tolerance to out-of-bounds addressing
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             dout <= {DATA_WIDTH{1'b0}};
@@ -37,7 +40,7 @@ module bram_synapse_matrix #(
                 ram[addr] <= din;
             end
 
-            // Protección de límite: Evita que lecturas fuera de rango devuelvan 'x'
+            // Boundary protection: clamp unmapped address reads strictly to zero (no 'X'/'Z')
             if (addr < MEM_SIZE) begin
                 dout <= ram[addr];
             end else begin

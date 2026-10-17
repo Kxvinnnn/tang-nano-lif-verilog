@@ -1,8 +1,8 @@
 // =============================================================================
 // csr_bram_ctrl.sv
-// Controlador de Bus Esclavo CSR (Control and Status Registers) y Puerto B BRAM
-// Habilita reconfiguración dinámica de pesos sinápticos y parámetros en caliente
-// Estándar: SystemVerilog IEEE 1800-2017
+// Control and Status Registers (CSR) Slave Bus Controller & BRAM Port B Arbiter
+// Enables dynamic runtime reconfiguration of synaptic weights and LIF parameters
+// Standard: SystemVerilog IEEE 1800-2017
 // =============================================================================
 
 `timescale 1ns / 1ps
@@ -12,17 +12,17 @@ module csr_bram_ctrl (
     input  logic        rst_n,
 
     // -------------------------------------------------------------------------
-    // Interfaz Esclava CSR de 32 bits (Memoria Mapeada)
+    // 32-bit Memory-Mapped CSR Slave Interface
     // -------------------------------------------------------------------------
-    input  logic [31:0] csr_addr,        // Dirección de 32 bits
-    input  logic [31:0] csr_wdata,       // Datos de escritura
-    input  logic        csr_write,       // 1 = Escritura, 0 = Lectura
-    input  logic        csr_valid,       // Solicitud de transacción válida
-    output logic [31:0] csr_rdata,       // Datos de lectura
-    output logic        csr_ready,       // Acknowledge / Terminación de ciclo
+    input  logic [31:0] csr_addr,        // 32-bit address
+    input  logic [31:0] csr_wdata,       // Write data
+    input  logic        csr_write,       // 1 = Write, 0 = Read
+    input  logic        csr_valid,       // Valid transaction request
+    output logic [31:0] csr_rdata,       // Read data
+    output logic        csr_ready,       // Cycle acknowledge / termination
 
     // -------------------------------------------------------------------------
-    // Señales de Control y Configuración hacia el Núcleo TDM
+    // Control & Configuration Signals to TDM Core
     // -------------------------------------------------------------------------
     output logic        core_en,
     output logic        core_soft_rst,
@@ -32,7 +32,7 @@ module csr_bram_ctrl (
     input  logic [15:0] spike_count_in,
 
     // -------------------------------------------------------------------------
-    // Interfaz Puerto B de True Dual-Port BRAM (Matriz de Pesos)
+    // True Dual-Port BRAM Port B Interface (Synaptic Weight Matrix)
     // -------------------------------------------------------------------------
     output logic [13:0]        bram_b_addr,
     output logic signed [15:0] bram_b_wdata,
@@ -41,7 +41,7 @@ module csr_bram_ctrl (
     input  logic signed [15:0] bram_b_rdata
 );
 
-    // Mapa de Registros de Control
+    // Control Register Memory Map
     localparam logic [31:0] ADDR_CTRL         = 32'h0000_0000;
     localparam logic [31:0] ADDR_STATUS       = 32'h0000_0004;
     localparam logic [31:0] ADDR_CFG_TH       = 32'h0000_0008;
@@ -49,29 +49,29 @@ module csr_bram_ctrl (
     localparam logic [31:0] BRAM_WINDOW_BASE  = 32'h0000_1000;
     localparam logic [31:0] BRAM_WINDOW_LIMIT = 32'h0000_5000;
 
-    // Registros internos
+    // Internal Configuration Registers
     logic        reg_en_q;
     logic        reg_soft_rst_q;
     logic signed [15:0] reg_v_th_q;
     logic [4:0]  reg_refractory_q;
 
-    // Asignación de salidas de control
+    // Control Output Assignments
     assign core_en         = reg_en_q;
     assign core_soft_rst   = reg_soft_rst_q;
     assign cfg_v_th        = reg_v_th_q;
     assign cfg_refractory  = reg_refractory_q;
 
-    // Detección de ventana de acceso a BRAM
+    // BRAM access window detection
     logic is_bram_access;
     assign is_bram_access = (csr_addr >= BRAM_WINDOW_BASE && csr_addr < BRAM_WINDOW_LIMIT);
 
-    // Decodificación de dirección BRAM (desplazamiento relativo de palabra de 16 bits)
+    // BRAM address decoding (relative 16-bit word offset)
     assign bram_b_addr  = csr_addr[14:1];
     assign bram_b_wdata = csr_wdata[15:0];
     assign bram_b_we    = csr_valid && csr_write && is_bram_access;
     assign bram_b_en    = csr_valid && is_bram_access;
 
-    // FSM de control de latencia de bus CSR (Handshake de 1 ciclo)
+    // CSR bus latency control FSM (1-cycle Handshake)
     typedef enum logic [1:0] {
         CSR_IDLE   = 2'b00,
         CSR_ACCESS = 2'b01,
@@ -85,10 +85,10 @@ module csr_bram_ctrl (
             state_q          <= CSR_IDLE;
             csr_ready        <= 1'b0;
             csr_rdata        <= 32'd0;
-            reg_en_q         <= 1'b1;         // Habilitado por defecto
+            reg_en_q         <= 1'b1;         // Enabled by default
             reg_soft_rst_q   <= 1'b0;
             reg_v_th_q       <= 16'sd1000;    // 1000_hw (-50.0 mV)
-            reg_refractory_q <= 5'd16;        // 16 ticks por defecto
+            reg_refractory_q <= 5'd16;        // 16 ticks by default
         end else begin
             csr_ready <= 1'b0;
 
@@ -149,7 +149,7 @@ module csr_bram_ctrl (
         csr_valid |-> ##[1:2] csr_ready;
     endproperty
     assert_csr_handshake_completion: assert property (p_csr_handshake_completion)
-        else $error("[SVA ERROR] Transacción de bus CSR no completada en el tiempo límite.");
+        else $error("[SVA ERROR] CSR bus transaction not completed within timeout limit.");
 
     // synthesis translate_on
 
