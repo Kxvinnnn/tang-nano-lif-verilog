@@ -31,8 +31,14 @@ The core compute engine does not run sequential software instructions. It is gov
 ### EDA Silicon Architecture Blueprint
 ![RTL Hardware Architecture Blueprint](docs/rtl_hardware_blueprint.png)
 
-### Silicon Footprint & FPGA Floorplan Metrics
+### Native Gowin EDA RTL Design Viewer & Physical FloorPlanner
+````carousel
+![Gowin EDA RTL Design Viewer](docs/gowin_rtl_viewer.png)
+<!-- slide -->
+![Gowin EDA Physical FloorPlanner](docs/gowin_floorplanner.png)
+<!-- slide -->
 ![GW1NR-9C Silicon Footprint & Resource Utilization](docs/fpga_floorplan_metrics.png)
+````
 
 ```mermaid
 graph TD
@@ -225,6 +231,8 @@ python telemetry/telemetry_listener.py --port COM4 --baud 115200 --log-csv telem
 └── docs/                           # [Research Publications, Benchmarks & Architectural Diagrams]
     ├── rtl_hardware_blueprint.png  # High-resolution 300 DPI EDA silicon blueprint diagram
     ├── rtl_hardware_blueprint.svg  # Scalable vector graphics EDA silicon blueprint diagram
+    ├── gowin_rtl_viewer.png        # Native Gowin EDA RTL Design Viewer schematic capture
+    ├── gowin_floorplanner.png      # Native Gowin EDA Physical FloorPlanner silicon die capture
     ├── fpga_floorplan_metrics.png  # Silicon floorplan and hardware utilization visual card
     ├── TECHNICAL_PAPER.md          # Comprehensive IEEE/NeurIPS scientific research manuscript
     ├── TECHNICAL_REPORT.md         # Full research report and AER scalability roadmap (Tier 2)
